@@ -11,7 +11,9 @@ def handle_vless(d):
             v = d['settings']['vnext'][0]
             s, p, u = v.get('address'), v.get('port'), v['users'][0].get('id')
         else:
-            s, p, u = d.get('server') or d.get('add'), d.get('server_port') or d.get('port'), d.get('uuid') or d.get('id')
+            s = d.get('server') or d.get('add')
+            p = d.get('server_port') or d.get('port')
+            u = d.get('uuid') or d.get('id')
         if not (s and u): return None
         ss = d.get('streamSettings', {})
         real = ss.get('realitySettings', d.get('reality', {}))
@@ -21,7 +23,8 @@ def handle_vless(d):
 
 def handle_hy2(d):
     try:
-        s_raw, u = str(d.get('server', '')), d.get('auth') or d.get('auth_str') or d.get('password')
+        s_raw = str(d.get('server', ''))
+        u = d.get('auth') or d.get('auth_str') or d.get('password')
         if not s_raw or not u or d.get('protocol') == 'freedom': return None
         host = s_raw.split(':')[0].replace('[','').replace(']','')
         port = re.findall(r'\d+', s_raw.split(':')[1])[0] if ':' in s_raw else 443
@@ -44,15 +47,8 @@ def handle_juicity(d):
 
 def handle_sq(d):
     try:
-        addr = d.get('addr') or (d.get('settings', {}).get('vnext', [{}])[0].get('address'))
+        addr = d.get('addr') or d.get('settings',{}).get('vnext',[{}])[0].get('address')
         u, pw = d.get('username') or d.get('auth'), d.get('password')
         if (d.get('type') != 'shadowquic' and d.get('protocol') != 'shadowquic') or not (addr and pw): return None
         host, port = addr.rsplit(':', 1)
-        return {"s":host,"p":int(port),"u":u or "user","pw":pw,"t":"shadowquic","sn":d.get('server-name','www.yahoo.com'),"cc":d.get('congestion_control','bbr')}
-    except: return None
-
-def handle_mieru(d):
-    try:
-        user, srv = d.get('user', {}), d.get('servers', [{}])[0]
-        port = srv.get('portBindings', [{}])[0].get('port')
-        if not (srv.get('ipAddress') and user.get('name
+        return {"s":host,"p":int(port),"u":u or
