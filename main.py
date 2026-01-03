@@ -7,16 +7,25 @@ ctx = ssl._create_unverified_context()
 
 def handle_vless(d):
     try:
+        # 提取核心字段
         if 'vnext' in d.get('settings', {}):
             v = d['settings']['vnext'][0]
             s, p, u = v.get('address'), v.get('port'), v['users'][0].get('id')
         else:
             s, p, u = d.get('server') or d.get('add'), d.get('server_port') or d.get('port'), d.get('uuid') or d.get('id')
         if not (s and u): return None
+        
         ss = d.get('streamSettings', {})
         rl = ss.get('realitySettings', d.get('reality', {}))
-        sn = rl.get('serverName') or ss.get('tlsSettings',{}).get('serverName') or d.get('sni','www.apple.com')
-        return {"s":str(s),"p":int(p),"u":str(u),"t":"vless","sn":sn,"pbk":rl.get('publicKey') or d.get('public_key'),"sid":rl.get('shortId') or d.get('short_id'),"net":ss.get('network','tcp')}
+        # 优先匹配参考配置中的 itunes.apple.com 等 SNI
+        sn = rl.get('serverName') or ss.get('tlsSettings',{}).get('serverName') or d.get('sni','itunes.apple.com')
+        
+        return {
+            "s": str(s), "p": int(p), "u": str(u), "t": "vless", "sn": sn,
+            "pbk": rl.get('publicKey') or d.get('public_key'),
+            "sid": rl.get('shortId') or d.get('short_id', ""),
+            "net": ss.get('network', d.get('net', 'tcp'))
+        }
     except: return None
 
 def handle_hy2(d):
@@ -25,39 +34,7 @@ def handle_hy2(d):
         if not sr or not u or d.get('protocol')=='freedom': return None
         h = sr.split(':')[0].replace('[','').replace(']','')
         pt = re.findall(r'\d+', sr.split(':')[1])[0] if ':' in sr else 443
-        return {"s":h,"p":int(pt),"u":str(u),"t":"hysteria2","sn":d.get('sni') or d.get('server_name') or "www.apple.com"}
-    except: return None
-
-def handle_naive(d):
-    try:
-        m = re.search(r'https://([^:]+):([^@]+)@([^:]+):(\d+)', d.get('proxy',''))
-        if m: return {"u":m.group(1),"pass":m.group(2),"s":m.group(3),"p":int(m.group(4)),"t":"naive","sn":m.group(3)}
-    except: return None
-
-def handle_juicity(d):
-    try:
-        s, u, pw = d.get('server',''), d.get('uuid'), d.get('password')
-        if not (s and u and pw): return None
-        h, pt = s.rsplit(':', 1)
-        return {"s":h,"p":int(pt),"u":str(u),"pw":str(pw),"t":"juicity","sn":d.get('sni',h),"cc":d.get('congestion_control','bbr')}
-    except: return None
-
-def handle_sq(d):
-    try:
-        ad = d.get('addr') or d.get('settings',{}).get('vnext',[{}])[0].get('address')
-        u, pw = d.get('username') or d.get('auth'), d.get('password')
-        if (d.get('type')!='shadowquic' and d.get('protocol')!='shadowquic') or not (ad and pw): return None
-        h, pt = ad.rsplit(':', 1)
-        return {"s":h,"p":int(pt),"u":str(u or "user"),"pw":str(pw),"t":"shadowquic","sn":d.get('server-name','www.yahoo.com'),"cc":d.get('congestion_control','bbr')}
-    except: return None
-
-def handle_mieru(d):
-    try:
-        usr, srv = d.get('user', {}), d.get('servers', [{}])[0]
-        pts = srv.get('portBindings', [{}])[0]
-        s, u, p = srv.get('ipAddress'), usr.get('name'), pts.get('port')
-        if not (s and u and p): return None
-        return {"s":str(s),"p":int(p),"u":str(u),"pw":str(usr.get('password')),"t":"mieru"}
+        return {"s":h,"p":int(pt),"u":str(u),"t":"hysteria2","sn":d.get('sni') or d.get('server_name') or "apple.com"}
     except: return None
 
 def find_dicts(obj):
@@ -71,6 +48,7 @@ def main():
     if not os.path.exists(MANUAL_FILE): return
     with open(MANUAL_FILE, 'r', encoding='utf-8') as f:
         urls = re.findall(r'https?://[^\s\'"\[\],]+', f.read())
+    
     nodes = []
     for url in urls:
         try:
@@ -79,58 +57,55 @@ def main():
                 raw = resp.read().decode('utf-8', errors='ignore')
                 data = json.loads(raw) if '{' in raw else yaml.safe_load(raw)
                 for d in find_dicts(data):
-                    n = handle_vless(d) or handle_hy2(d) or handle_juicity(d) or handle_naive(d) or handle_sq(d) or handle_mieru(d)
+                    n = handle_vless(d) or handle_hy2(d)
                     if n: nodes.append(n)
         except: continue
     
     uniq, seen, clash_px, v2_links = [], set(), [], []
     for n in nodes:
-        key = (n['s'], n['p'], n.get('u') or n.get('pw'))
+        key = (n['s'], n['p'], n['u'])
         if key not in seen: uniq.append(n); seen.add(key)
 
     for i, n in enumerate(uniq):
-        nm = f"🌐 {n['t'].upper()}_{i+1}_{n['s'][-5:]}"
-        # 通用 Clash 属性
+        nm = f"{i+1:02d}_{n['t'].upper()}_{n['s'].split('.')[-1]}"
         px = {"name": nm, "server": n['s'], "port": n['p'], "skip-cert-verify": True}
         
-        # Clash 协议适配与过滤
-        is_clash_compatible = True
         if n['t'] == 'vless':
-            px.update({"type":"vless","uuid":n['u'],"tls":True,"servername":n['sn'],"network":n.get('net','tcp'),"udp":True})
-            if n.get('pbk'): px.update({"reality-opts":{"public-key":n['pbk'],"short-id":n.get('sid','')}})
-            v2_links.append(f"vless://{n['u']}@{n['s']}:{n['p']}?encryption=none&security=reality&sni={n['sn']}&fp=chrome&pbk={n.get('pbk','')}&sid={n.get('sid','')}&type={n.get('net','tcp')}#{nm}")
+            px.update({
+                "type": "vless", "uuid": n['u'], "tls": True, "udp": True,
+                "servername": n['sn'], "network": n['net'], "client-fingerprint": "chrome"
+            })
+            if n.get('pbk'):
+                px.update({"reality-opts": {"public-key": n['pbk'], "short-id": n['sid']}})
+            v2_links.append(f"vless://{n['u']}@{n['s']}:{n['p']}?encryption=none&security=reality&sni={n['sn']}&fp=chrome&pbk={n.get('pbk','')}&sid={n.get('sid','')}&type={n['net']}#{nm}")
         elif n['t'] == 'hysteria2':
-            px.update({"type":"hysteria2","password":n['u'],"sni":n['sn']})
+            px.update({"type": "hysteria2", "password": n['u'], "sni": n['sn']})
             v2_links.append(f"hysteria2://{n['u']}@{n['s']}:{n['p']}?sni={n['sn']}&insecure=1#{nm}")
-        elif n['t'] == 'naive':
-            px.update({"type":"http","username":n['u'],"password":n['pass'],"tls":True,"sni":n['sn'],"proxy-octet-stream":True})
-        elif n['t'] == 'juicity':
-            px.update({"type":"juicity","uuid":n['u'],"password":n['pw'],"sni":n['sn'],"congestion-control":n.get('cc','bbr')})
-            v2_links.append(f"juicity://{n['u']}:{n['pw']}@{n['s']}:{n['p']}?sni={n['sn']}#{nm}")
-        else:
-            # ShadowQuic 和 Mieru 在此过滤，不进入 Clash 配置文件以防报错
-            is_clash_compatible = False
-            if n['t'] == 'shadowquic':
-                v2_links.append(f"shadowquic://{n['u']}:{n['pw']}@{n['s']}:{n['p']}?sni={n['sn']}#{nm}")
+        
+        clash_px.append(px)
 
-        if is_clash_compatible:
-            clash_px.append(px)
+    # 封装参考配置中的高级规则结构
+    conf = {
+        "proxies": clash_px,
+        "proxy-groups": [
+            {"name": "🚀 节点选择", "type": "select", "proxies": ["⚡ 自动选择"] + [p['name'] for p in clash_px] + ["DIRECT"]},
+            {"name": "⚡ 自动选择", "type": "url-test", "proxies": [p['name'] for p in clash_px], "url": "http://www.gstatic.com/generate_204", "interval": 300},
+            {"name": "🌍 全球直连", "type": "select", "proxies": ["DIRECT", "🚀 节点选择"]},
+            {"name": "🐟 漏网之鱼", "type": "select", "proxies": ["🚀 节点选择", "DIRECT"]}
+        ],
+        "rules": [
+            "GEOIP,LAN,DIRECT", "GEOIP,CN,🌍 全球直连", "MATCH,🐟 漏网之鱼"
+        ]
+    }
 
-    # 保存 Clash (只包含兼容协议)
-    conf = {"proxies": clash_px, "proxy-groups": [{"name": "🚀 🚀", "type": "url-test", "proxies": [p['name'] for p in clash_px], "url": "http://www.gstatic.com/generate_204", "interval": 300}, {"name": "🔰 🔰", "type": "select", "proxies": ["🚀 🚀"] + [p['name'] for p in clash_px]}], "rules": ["MATCH,🔰 🔰"]}
     with open(f"{OUT_DIR}/clash.yaml", 'w', encoding='utf-8') as f:
         yaml.dump(conf, f, allow_unicode=True, sort_keys=False)
-
-    # 保存 node.txt (包含所有可转换的原始链接)
     with open(f"{OUT_DIR}/node.txt", 'w', encoding='utf-8') as f:
         f.write("\n".join(v2_links))
-
-    # 保存 sub.txt (Base64 订阅)
-    v2_base64 = base64.b64encode("\n".join(v2_links).encode('utf-8')).decode('utf-8')
     with open(f"{OUT_DIR}/sub.txt", 'w', encoding='utf-8') as f:
-        f.write(v2_base64)
+        f.write(base64.b64encode("\n".join(v2_links).encode()).decode())
 
-    print(f"✅ Final! Clash: {len(clash_px)}, V2Ray Links: {len(v2_links)}")
+    print(f"✅ 完成! 兼容节点: {len(clash_px)}")
 
 if __name__ == "__main__":
     main()
