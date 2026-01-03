@@ -87,4 +87,15 @@ def parse_remote(url):
                         nodes = [{"name":"Naive","type":"socks5","server":m.group(3),"port":443,"username":m.group(1),"password":m.group(2),"tls":True}]
                 elif "hysteria2" in url:
                     s, p = jd["server"].split(":")
-                    nodes = [{"name":"Hys2","type":"hysteria2","server":s,"port":int(p
+                    nodes = [{"name":"Hys2","type":"hysteria2","server":s,"port":int(p),"password":jd.get("auth"),"sni":jd.get("server_name")}]
+                else:
+                    for out in jd.get("outbounds", []):
+                        if out.get("server") and out.get("type") not in ["direct", "block", "dns"]:
+                            nodes.append({"name":out.get("type").upper(),"type":out['type'].replace("shadowsocks","ss"),"server":out['server'],"port":out['server_port'],"uuid":out.get("uuid"),"password":out.get("password"),"cipher":out.get("method"),"sni":out.get("tls",{}).get("server_name")})
+    except: pass
+    return nodes
+
+def process_node(proxy):
+    srv, prt = proxy.get('server'), proxy.get('port')
+    if not srv or not prt: return None
+    delay,
