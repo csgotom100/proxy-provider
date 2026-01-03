@@ -6,8 +6,8 @@ warnings.filterwarnings("ignore")
 # --- 1. 配置 ---
 OUT_DIR = './sub'
 MANUAL_FILE = './urls/manual_json.txt'
-# 如果你的客户端报错，请在这里剔除 'naive' 或 'juicity'
-SUPPORTED_TYPES = ['vless', 'hysteria2', 'shadowsocks', 'trojan'] 
+# 仅保留你客户端 100% 支持的协议，剔除导致报错的 naive
+SUPPORTED_TYPES = ['vless', 'hysteria2'] 
 
 os.makedirs(OUT_DIR, exist_ok=True)
 ctx = ssl._create_unverified_context()
@@ -23,40 +23,41 @@ def get_geo(ip):
     except: return "🏳️"
 
 def parse_strict(d):
-    """严格解析 JSON"""
+    """专门针对 VLESS (Reality) 和 HY2 的严格提取"""
     try:
         if not isinstance(d, dict): return None
         
-        # 处理 Naive 特殊字符串
-        if 'proxy' in d and 'https://' in str(d.get('proxy')):
-            m = re.search(r'https://([^:]+):([^@]+)@([^:]+):(\d+)', d.get('proxy'))
-            if m: return {"s": m.group(3), "p": int(m.group(4)), "t": "naive", "u": m.group(1), "pass": m.group(2), "sn": m.group(3)}
-
-        # 基础字段提取
-        s_raw = d.get('server') or d.get('add') or d.get('address')
-        p = d.get('port') or d.get('server_port') or d.get('listen_port')
-        u = d.get('uuid') or d.get('password') or d.get('id') or d.get('auth') or d.get('user_id')
+        # 提取核心字段：优先适配 Xray/Sing-box 常见的 add/port/id 组合
+        s = d.get('add') or d.get('server') or d.get('address')
+        p = d.get('port') or d.get('server_port')
+        u = d.get('id') or d.get('uuid') or d.get('password') or d.get('auth')
         
-        if not (s_raw and u): return None
+        if not (s and p and u): return None
         
-        if ':' in str(s_raw) and not p:
-            parts = str(s_raw).split(':')
-            s, p = "".join(parts[:-1]).replace('[','').replace(']',''), parts[-1]
-        else:
-            s, p = str(s_raw).replace('[','').replace(']',''), p
+        # 处理可能的 host:port 格式
+        s = str(s).replace('[','').replace(']','')
+        if ':' in s and not p:
+            s, p = s.rsplit(':', 1)
 
+        # 协议判断
         t_raw = str(d.get('type', '')).lower()
-        if 'juicity' in t_raw or 'juicity' in d: t = 'juicity'
-        elif 'hy' in t_raw or 'hysteria2' in t_raw or 'auth' in d: t = 'hysteria2'
-        else: t = 'vless'
+        if 'hy' in t_raw or 'hysteria2' in t_raw or 'auth' in d:
+            t = 'hysteria2'
+        else:
+            t = 'vless'
 
         node = {"s": s, "p": int(p), "u": str(u), "t": t}
-        tls = d.get('tls', {}) if isinstance(d.get('tls'), dict) else {}
-        node["sn"] = d.get('sni') or d.get('servername') or tls.get('server_name') or ""
         
-        ry = d.get('reality-opts') or d.get('reality') or tls.get('reality') or {}
-        if isinstance(ry, dict) and (ry.get('public-key') or ry.get('publicKey')):
-            node["pbk"], node["sid"] = (ry.get('public-key') or ry.get('publicKey')), (ry.get('short-id') or ry.get('shortId') or "")
+        # --- 重点：提取 VLESS 的 Reality/TLS 参数 ---
+        tls = d.get('tls', {}) if isinstance(d.get('tls'), dict) else {}
+        node["sn"] = d.get('sni') or d.get('servername') or d.get('peer') or tls.get('server_name') or ""
+        
+        # Reality 专门提取
+        ry = d.get('reality') or d.get('reality-opts') or tls.get('reality') or {}
+        if isinstance(ry, dict):
+            node["pbk"] = ry.get('public-key') or ry.get('publicKey')
+            node["sid"] = ry.get('short-id') or ry.get('shortId') or ""
+            
         return node
     except: return None
 
@@ -73,11 +74,14 @@ def main():
         urls = list(set(re.findall(r'https?://[^\s\'"\[\],]+', f.read())))
     
     all_nodes = []
+    print(f"📂 正在深度解析 {len(urls)} 个源地址...")
+
     for url in urls:
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=12, context=ctx) as resp:
                 text = resp.read().decode('utf-8', errors='ignore')
+                # 兼容解析 JSON 或 YAML
                 try: data = json.loads(text)
                 except: data = yaml.safe_load(text)
                 if data:
@@ -88,9 +92,7 @@ def main():
 
     uniq, seen = [], set()
     for n in all_nodes:
-        # --- 增加过滤逻辑：只保留受支持的协议 ---
         if n['t'] not in SUPPORTED_TYPES: continue
-        
         k = (n['s'], n['p'], n['u'])
         if k not in seen: uniq.append(n); seen.add(k)
 
@@ -99,19 +101,27 @@ def main():
     
     for i, n in enumerate(uniq):
         flag = get_geo(n['s'])
-        name = f"{flag} {n['t'].upper()}_{n['s'].split('.')[-1]}_{i+1}"
+        name = f"{flag} {n['t'].upper()}_{i+1}_{n['s'].split('.')[-1]}"
+        
+        # 构造 Clash 代理格式
         px = {"name": name, "type": n['t'], "server": n['s'], "port": n['p'], "skip-cert-verify": True}
         
         if n['t'] == 'hysteria2':
-            px.update({"password": n['u'], "sni": n['sn']})
+            px.update({"password": n['u'], "sni": n['sn'] if n['sn'] else n['s']})
         elif n['t'] == 'vless':
-            px.update({"uuid": n['u'], "tls": True, "servername": n['sn']})
-            if "pbk" in n:
-                px.update({"network": "tcp", "reality-opts": {"public-key": n['pbk'], "short-id": n['sid']}})
+            # VLESS 必须开启 TLS
+            px.update({"uuid": n['u'], "tls": True, "servername": n['sn'] if n['sn'] else n['s']})
+            # 如果包含 Reality 参数
+            if n.get('pbk'):
+                px.update({
+                    "network": "tcp",
+                    "reality-opts": {"public-key": n['pbk'], "short-id": n['sid']}
+                })
         
         clash_px.append(px)
-        if i % 10 == 0: time.sleep(0.5)
+        if i % 15 == 0: time.sleep(0.5)
 
+    # 构造完整 YAML
     conf = {
         "proxies": clash_px,
         "proxy-groups": [
@@ -125,7 +135,7 @@ def main():
     with open(f"{OUT_DIR}/clash.yaml", 'w', encoding='utf-8') as f:
         yaml.dump(conf, f, allow_unicode=True, sort_keys=False)
     
-    print(f"✅ 解析完成! 已过滤不支持的协议，剩余节点数: {len(clash_px)}")
+    print(f"✅ 完成！VLESS 与 HY2 节点总数: {len(clash_px)}")
 
 if __name__ == "__main__":
     main()
