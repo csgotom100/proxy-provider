@@ -1,0 +1,53 @@
+name: Update Nodes Every 4 Hours
+
+on:
+  schedule:
+    # 每 4 小时运行一次 (UTC 时间 0, 4, 8, 12, 16, 20 点)
+    # 对应北京时间 (CST) 的 08:00, 12:00, 16:00, 20:00, 00:00, 04:00
+    - cron: '0 */4 * * *'
+  workflow_dispatch:      # 允许手动在 Actions 页面点击运行
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    # 必须开启写入权限，否则生成的订阅文件无法存回仓库
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml
+
+      - name: Run script
+        run: python main.py
+
+      - name: Commit and push changes
+        run: |
+          # 配置 Git 机器人信息
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # 确保 sub 文件夹被加入版本控制
+          git add sub/*
+          
+          # 获取北京时间用于提交信息
+          # GitHub Runner 默认是 UTC，通过 TZ=Asia/Shanghai 获取北京时间
+          BEIJING_TIME=$(TZ='Asia/Shanghai' date "+%Y-%m-%d %H:%M:%S")
+          
+          # 检查是否有文件更改，如果有则提交并推送到仓库
+          if git diff --staged --quiet; then
+            echo "没有发现节点变化，跳过提交。"
+          else
+            git commit -m "自动更新节点于北京时间: $BEIJING_TIME"
+            git push
+          fi
