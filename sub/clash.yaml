@@ -1,5 +1,26 @@
 proxies:
-- name: 01_NAIVE_xyz
+- name: 01_HYSTERIA2_43
+  server: 157.254.223.43
+  port: 27921
+  skip-cert-verify: true
+  type: hysteria2
+  password: dongtaiwang.com
+  sni: apple.com
+- name: 02_HYSTERIA2_146
+  server: 62.210.124.146
+  port: 22000
+  skip-cert-verify: true
+  type: hysteria2
+  password: dongtaiwang.com
+  sni: www.microsoft.com
+- name: 03_HYSTERIA2_63
+  server: 51.158.194.63
+  port: 32952
+  skip-cert-verify: true
+  type: hysteria2
+  password: dongtaiwang.com
+  sni: www.microsoft.com
+- name: 04_NAIVE_xyz
   server: us.193919.xyz
   port: 44000
   skip-cert-verify: true
@@ -9,7 +30,7 @@ proxies:
   tls: true
   sni: us.193919.xyz
   proxy-octet-stream: true
-- name: 02_NAIVE_xyz
+- name: 05_NAIVE_xyz
   server: naive1.336892.xyz
   port: 22338
   skip-cert-verify: true
@@ -19,7 +40,7 @@ proxies:
   tls: true
   sni: naive1.336892.xyz
   proxy-octet-stream: true
-- name: 03_VLESS_44
+- name: 06_VLESS_44
   server: 157.254.223.44
   port: 18959
   skip-cert-verify: true
@@ -33,7 +54,7 @@ proxies:
   reality-opts:
     public-key: -hwVEdgFkvjku8ESuDoAA7id5yGGv_zXBvBW_RdhmHA
     short-id: d557c6895d014075
-- name: 04_VLESS_232
+- name: 07_VLESS_232
   server: 89.144.35.232
   port: 15531
   skip-cert-verify: true
@@ -52,18 +73,24 @@ proxy-groups:
   type: select
   proxies:
   - ⚡ 自动选择
-  - 01_NAIVE_xyz
-  - 02_NAIVE_xyz
-  - 03_VLESS_44
-  - 04_VLESS_232
+  - 01_HYSTERIA2_43
+  - 02_HYSTERIA2_146
+  - 03_HYSTERIA2_63
+  - 04_NAIVE_xyz
+  - 05_NAIVE_xyz
+  - 06_VLESS_44
+  - 07_VLESS_232
   - DIRECT
 - name: ⚡ 自动选择
   type: url-test
   proxies:
-  - 01_NAIVE_xyz
-  - 02_NAIVE_xyz
-  - 03_VLESS_44
-  - 04_VLESS_232
+  - 01_HYSTERIA2_43
+  - 02_HYSTERIA2_146
+  - 03_HYSTERIA2_63
+  - 04_NAIVE_xyz
+  - 05_NAIVE_xyz
+  - 06_VLESS_44
+  - 07_VLESS_232
   url: http://www.gstatic.com/generate_204
   interval: 300
 rules:
