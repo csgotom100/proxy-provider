@@ -1,0 +1,151 @@
+port: 7890
+socks-port: 7891
+mixed-port: 7893
+allow-interface-control: false
+mode: rule
+log-level: info
+ipv6: false
+external-controller: 127.0.0.1:9090
+dns:
+  enable: true
+  ipv6: false
+  listen: 0.0.0.0:53
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  nameserver:
+  - 119.29.29.29
+  - 223.5.5.5
+  fallback:
+  - 8.8.8.8
+  - 1.1.1.1
+proxies:
+- name: HYSTERIA2_157.254.223.43
+  type: hysteria2
+  server: 157.254.223.43
+  port: 27921
+  password: dongtaiwang.com
+  uuid: null
+  sni: null
+  skip-cert-verify: true
+- name: VLESS_157.254.223.48
+  type: vless
+  server: 157.254.223.48
+  port: 45889
+  password: null
+  uuid: dongtaiwang.com
+  sni: us3.193919.xyz
+  skip-cert-verify: true
+- name: VLESS_157.254.223.44
+  type: vless
+  server: 157.254.223.44
+  port: 18959
+  password: null
+  uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
+  sni: null
+  skip-cert-verify: true
+  reality:
+    pbk: -hwVEdgFkvjku8ESuDoAA7id5yGGv_zXBvBW_RdhmHA
+    sid: d557c6895d014075
+proxy-groups:
+- name: 🚀 节点选择
+  type: select
+  proxies:
+  - ⚡ 自动选择
+  - 🇭🇰 香港节点
+  - 🇺🇸 美国节点
+  - 🇯🇵 日本节点
+  - 🇸🇬 新加坡节点
+  - 🌍 剩余地区
+  - DIRECT
+  - HYSTERIA2_157.254.223.43
+  - VLESS_157.254.223.48
+  - VLESS_157.254.223.44
+- name: 📺 国际流媒体
+  type: select
+  proxies:
+  - 🚀 节点选择
+  - 🇭🇰 香港节点
+  - 🇺🇸 美国节点
+  - 🇯🇵 日本节点
+  - 🇸🇬 新加坡节点
+  - DIRECT
+  - HYSTERIA2_157.254.223.43
+  - VLESS_157.254.223.48
+  - VLESS_157.254.223.44
+- name: 📲 电报消息
+  type: select
+  proxies:
+  - 🚀 节点选择
+  - 🇸🇬 新加坡节点
+  - DIRECT
+  - HYSTERIA2_157.254.223.43
+  - VLESS_157.254.223.48
+  - VLESS_157.254.223.44
+- name: Ⓜ️ 微软服务
+  type: select
+  proxies:
+  - DIRECT
+  - 🚀 节点选择
+  - HYSTERIA2_157.254.223.43
+  - VLESS_157.254.223.48
+  - VLESS_157.254.223.44
+- name: 🍎 苹果服务
+  type: select
+  proxies:
+  - DIRECT
+  - 🚀 节点选择
+  - HYSTERIA2_157.254.223.43
+  - VLESS_157.254.223.48
+  - VLESS_157.254.223.44
+- name: ⚡ 自动选择
+  type: url-test
+  url: http://www.gstatic.com/generate_204
+  interval: 300
+  tolerance: 50
+  proxies:
+  - HYSTERIA2_157.254.223.43
+  - VLESS_157.254.223.48
+  - VLESS_157.254.223.44
+- name: 🇭🇰 香港节点
+  type: select
+  proxies:
+  - HYSTERIA2_157.254.223.43
+  - VLESS_157.254.223.48
+  - VLESS_157.254.223.44
+- name: 🇺🇸 美国节点
+  type: select
+  proxies:
+  - HYSTERIA2_157.254.223.43
+  - VLESS_157.254.223.48
+  - VLESS_157.254.223.44
+- name: 🇯🇵 日本节点
+  type: select
+  proxies:
+  - HYSTERIA2_157.254.223.43
+  - VLESS_157.254.223.48
+  - VLESS_157.254.223.44
+- name: 🇸🇬 新加坡节点
+  type: select
+  proxies:
+  - HYSTERIA2_157.254.223.43
+  - VLESS_157.254.223.48
+  - VLESS_157.254.223.44
+- name: 🌍 剩余地区
+  type: select
+  proxies:
+  - HYSTERIA2_157.254.223.43
+  - VLESS_157.254.223.48
+  - VLESS_157.254.223.44
+rules:
+- DOMAIN-KEYWORD,adserver,REJECT
+- DOMAIN-SUFFIX,googleadservices.com,REJECT
+- DOMAIN-SUFFIX,netflix.com,📺 国际流媒体
+- DOMAIN-SUFFIX,netflix.net,📺 国际流媒体
+- DOMAIN-SUFFIX,youtube.com,📺 国际流媒体
+- DOMAIN-SUFFIX,googlevideo.com,📺 国际流媒体
+- DOMAIN-SUFFIX,telegram.org,📲 电报消息
+- IP-CIDR,91.108.4.0/22,📲 电报消息,no-resolve
+- DOMAIN-SUFFIX,microsoft.com,Ⓜ️ 微软服务
+- DOMAIN-SUFFIX,apple.com,🍎 苹果服务
+- GEOIP,CN,DIRECT
+- MATCH,🚀 节点选择
