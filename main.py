@@ -6,11 +6,11 @@ import os
 import ssl
 import warnings
 import re
+import time
 
 warnings.filterwarnings("ignore")
 
 # --- 配置 ---
-# 使用标准列表格式，确保每个字符串都正确闭合
 FIXED_SOURCES = [
     "https://www.gitlabip.xyz/Alvin9999/PAC/refs/heads/master/backup/img/1/2/ipp/hysteria2/1/config.json",
     "https://www.gitlabip.xyz/Alvin9999/PAC/refs/heads/master/backup/img/1/2/ipp/hysteria2/2/config.json",
@@ -44,46 +44,47 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 ctx = ssl._create_unverified_context()
 
 def get_node_info(item):
+    """极致宽容解析：只要有IP、端口、密钥就是好节点"""
     try:
         if not isinstance(item, dict): return None
-        raw_server = item.get('server') or item.get('add') or item.get('address')
-        if not raw_server or str(raw_server).startswith('127.'): return None
+        # 1. 找服务器
+        srv = item.get('server') or item.get('add') or item.get('address') or item.get('host')
+        if not srv or str(srv).startswith('127.'): return None
         
-        server_str = str(raw_server).strip()
-        server, port = "", ""
-        if ']:' in server_str: 
-            server, port = server_str.split(']:')[0] + ']', server_str.split(']:')[1]
-        elif server_str.startswith('[') and ']' in server_str:
-            server, port = server_str, (item.get('port') or item.get('server_port'))
-        elif server_str.count(':') == 1:
-            server, port = server_str.split(':')
-        else:
-            server, port = server_str, (item.get('port') or item.get('server_port') or item.get('port_num'))
+        # 2. 找端口
+        port = item.get('port') or item.get('server_port') or item.get('port_num')
+        if not port and ':' in str(srv):
+            srv, port = str(srv).rsplit(':', 1)
+        
+        # 3. 找密钥
+        pwd = item.get('password') or item.get('uuid') or item.get('id') or item.get('auth')
+        if not srv or not port or not pwd: return None
 
-        if port: port = str(port).split(',')[0].split('-')[0].split('/')[0].strip()
-        if not server or not port: return None
-
-        secret = item.get('auth') or item.get('auth_str') or item.get('auth-str') or \
-                 item.get('password') or item.get('uuid') or item.get('id')
-        if not secret: return None
-
-        p_type = str(item.get('type', '')).lower()
-        if 'auth' in item or 'hy2' in p_type or 'hysteria2' in p_type: ntype = 'hysteria2'
-        elif 'uuid' in item or 'vless' in p_type or 'id' in item: ntype = 'vless'
+        # 清洗数据
+        srv = str(srv).replace('[','').replace(']','')
+        port = int(str(port).split(',')[0].split('-')[0].strip())
+        
+        # 协议识别
+        t = str(item.get('type', '')).lower()
+        if 'hy2' in t or 'hysteria2' in t or 'auth' in item: ntype = 'hysteria2'
+        elif 'vless' in t or 'uuid' in item: ntype = 'vless'
+        elif 'vmess' in t: ntype = 'vmess'
+        elif 'ss' in t or 'shadowsocks' in t: ntype = 'ss'
         else: ntype = 'vless'
 
+        # 特色参数提取
         tls_obj = item.get('tls', {}) if isinstance(item.get('tls'), dict) else {}
-        sni = item.get('servername') or item.get('sni') or tls_obj.get('server_name') or tls_obj.get('sni') or ""
+        sni = item.get('sni') or item.get('servername') or tls_obj.get('server_name') or ""
         
-        reality_obj = item.get('reality-opts') or tls_obj.get('reality') or item.get('reality') or {}
-        if not isinstance(reality_obj, dict): reality_obj = {}
-        pbk = reality_obj.get('public-key') or reality_obj.get('public_key') or item.get('public-key') or ""
-        sid = reality_obj.get('short-id') or reality_obj.get('short_id') or item.get('short-id') or ""
+        node = {"server": srv, "port": port, "type": ntype, "secret": str(pwd), "sni": sni}
         
-        return {
-            "server": server.replace('[','').replace(']',''), "port": int(port), "type": ntype, 
-            "sni": sni, "secret": secret, "pbk": pbk, "sid": sid
-        }
+        # Reality 处理
+        ry = item.get('reality-opts') or item.get('reality') or tls_obj.get('reality') or {}
+        if isinstance(ry, dict) and (ry.get('public-key') or ry.get('publicKey')):
+            node["pbk"] = ry.get('public-key') or ry.get('publicKey')
+            node["sid"] = ry.get('short-id') or ry.get('shortId') or ""
+            
+        return node
     except: return None
 
 def extract_dicts(obj):
@@ -96,54 +97,36 @@ def extract_dicts(obj):
     return res
 
 def main():
-    raw_nodes_data = []
+    all_nodes = []
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
     
-    all_urls = FIXED_SOURCES.copy()
+    # 合并订阅源
+    target_urls = FIXED_SOURCES.copy()
     if os.path.exists(MANUAL_FILE):
-        try:
-            with open(MANUAL_FILE, 'r', encoding='utf-8') as f:
-                content = f.read()
-                found_urls = re.findall(r'https?://[^\s\'"\[\],]+', content)
-                all_urls.extend(found_urls)
-        except: pass
+        with open(MANUAL_FILE, 'r', encoding='utf-8') as f:
+            target_urls.extend(re.findall(r'https?://[^\s\'"\[\],]+', f.read()))
     
-    all_urls = list(set(all_urls))
-    print(f"🔍 检测到 {len(all_urls)} 个源，开始同步...")
-    
-    for url in all_urls:
+    target_urls = list(set(target_urls))
+    print(f"📡 正在扫描 {len(target_urls)} 个源...")
+
+    for url in target_urls:
         try:
             req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=15, context=ctx) as response:
-                content = response.read().decode('utf-8').strip()
-                if content.startswith('{') or content.startswith('['):
-                    data = json.loads(content)
-                else:
-                    data = yaml.safe_load(content)
+            with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
+                raw_text = resp.read().decode('utf-8', errors='ignore')
+                count_before = len(all_nodes)
                 
-                for d in extract_dicts(data):
-                    node = get_node_info(d)
-                    if node: raw_nodes_data.append(node)
-        except: continue
-
-    unique_configs = []
-    seen = set()
-    for n in raw_nodes_data:
-        config_key = (n['server'], n['port'], n['secret'])
-        if config_key not in seen:
-            unique_configs.append(n); seen.add(config_key)
-
-    clash_proxies = []
-    for i, n in enumerate(unique_configs):
-        n_name = f"{n['type'].upper()}_{n['server'].split('.')[-1]}_{i+1}"
-        if n['type'] == 'hysteria2':
-            clash_proxies.append({
-                "name": n_name, "type": "hysteria2", "server": n['server'], "port": n['port'],
-                "password": n['secret'], "tls": True, "sni": n['sni'], "skip-cert-verify": True
-            })
-        elif n['type'] == 'vless':
-            node = {
-                "name": n_name, "type": "vless", "server": n['server'], "port": n['port'],
-                "uuid": n['secret'], "tls": True, "udp": True, "servername": n['sni'],
-                "network": "tcp", "client-fingerprint": "chrome"
-            }
+                # 尝试结构化解析
+                try:
+                    data = json.loads(raw_text) if raw_text.startswith(('{','[')) else yaml.safe_load(raw_text)
+                    for d in extract_dicts(data):
+                        node = get_node_info(d)
+                        if node: all_nodes.append(node)
+                except: pass
+                
+                # 尝试 Base64 暴力解码及正则提取 (兜底)
+                if len(all_nodes) == count_before:
+                    try:
+                        decoded = base64.b64decode(raw_text).decode('utf-8', errors='ignore')
+                        # 这里简单识别 vless:// 链接中的关键信息并模拟成字典
+                        links
