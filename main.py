@@ -42,11 +42,9 @@ def handle_hy2_native(d):
     """适配 HY2 Native (处理端口跳跃格式及不同 auth 字段)"""
     try:
         s_raw = str(d.get('server', ''))
-        # 兼容 auth, auth_str, password 字段
         u = d.get('auth') or d.get('auth_str') or d.get('password')
         if not s_raw or not u: return None
         
-        # 处理 IP:Port1,Port2... 格式，仅提取首个主端口
         host = s_raw.split(':')[0].replace('[','').replace(']','')
         port_match = re.findall(r'\d+', s_raw.split(':')[1]) if ':' in s_raw else ['443']
         port = port_match[0]
@@ -59,11 +57,10 @@ def handle_hy2_native(d):
     except: return None
 
 def handle_naive(d):
-    """适配 NaiveProxy 样板 (解析 https 代理字符串)"""
+    """适配 NaiveProxy 样板"""
     proxy_str = d.get('proxy', '')
     if not proxy_str.startswith('https://'): return None
     try:
-        # 匹配格式: https://user:pass@host:port
         m = re.search(r'https://([^:]+):([^@]+)@([^:]+):(\d+)', proxy_str)
         if m: 
             return {
@@ -73,9 +70,47 @@ def handle_naive(d):
     except: return None
 
 def handle_juicity(d):
-    """适配 Juicity 样板 (UUID + Password)"""
+    """适配 Juicity 样板"""
     try:
         s_raw = d.get('server', '')
         u = d.get('uuid')
         pw = d.get('password')
-        if
+        if not (s_raw and u and pw): return None
+        host, port = s_raw.rsplit(':', 1)
+        return {
+            "s": host, "p": int(port), "u": str(u), "pw": str(pw),
+            "t": "juicity", "sn": d.get('sni', host), "cc": d.get('congestion_control', 'bbr')
+        }
+    except: return None
+
+# --- ⚙️ 核心处理引擎 ---
+
+def find_dicts(obj):
+    if isinstance(obj, dict):
+        yield obj
+        for v in obj.values(): yield from find_dicts(v)
+    elif isinstance(obj, list):
+        for i in obj: yield from find_dicts(i)
+
+def main():
+    if not os.path.exists(MANUAL_FILE): 
+        print(f"❌ 找不到资源文件: {MANUAL_FILE}")
+        return
+    
+    with open(MANUAL_FILE, 'r', encoding='utf-8') as f:
+        urls = list(set(re.findall(r'https?://[^\s\'"\[\],]+', f.read())))
+    
+    final_nodes = []
+    print(f"📂 开始分流提取...")
+
+    for url in urls:
+        # 识别标签
+        tag = 'vless' if '/vless' in url else 'hy2' if '/hy' in url else \
+              'naive' if '/naive' in url else 'juicity' if '/juicity' in url else None
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=10, context=ctx) as resp:
+                text = resp.read().decode('utf-8', errors='ignore')
+                data = json.loads(text) if '{' in text else yaml.safe_load(text)
+                
+                for d in find_
