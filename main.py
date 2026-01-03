@@ -16,7 +16,6 @@ MAX_THREADS = 50
 SOURCE_FILE = './urls/manual_json.txt'
 TEMPLATE_FILE = './templates/clash_template.yaml'
 OUTPUT_DIR = './sub'
-# 定义北京时区 (UTC+8)
 BEIJING_TZ = timezone(timedelta(hours=8))
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -49,17 +48,16 @@ def get_tcp_delay(server, port):
 def to_link(p):
     try:
         name = urllib.parse.quote(p.get('name', 'Proxy'))
-        srv = p.get('server')
-        prt = p.get('port')
+        srv, prt = p.get('server'), p.get('port')
         if not srv or not prt: return None
-        
         if p['type'] == 'hysteria2':
-            return f"hy2://{p.get('password','')}@{srv}:{prt}?insecure=1&sni={p.get('sni','')}#{name}"
+            pw = p.get('password','')
+            sn = p.get('sni','')
+            return f"hy2://{pw}@{srv}:{prt}?insecure=1&sni={sn}#{name}"
         elif p['type'] == 'ss':
-            method = p.get('cipher')
-            passwd = p.get('password')
-            if not method or not passwd: return None
-            auth = base64.b64encode(f"{method}:{passwd}".encode()).decode()
+            m, pw = p.get('cipher'), p.get('password')
+            if not m or not pw: return None
+            auth = base64.b64encode(f"{m}:{pw}".encode()).decode()
             return f"ss://{auth}@{srv}:{prt}#{name}"
     except: return None
 
@@ -79,42 +77,78 @@ def parse_remote(url):
                 jd = json.loads(raw)
                 if "juicity" in url:
                     s, p = jd["server"].split(":")
-                    nodes = [{"name":"Juicity","type":"juicity","server":s,"port":int(p),"uuid":jd.get("uuid"),"sni":jd.get("sni"),"pinned-certchain-sha256":jd.get("pinned_certchain_sha256")}]
+                    nodes = [{"name":"Juicity","type":"juicity","server":s,"port":int(p),"uuid":jd.get("uuid"),"sni":jd.get("sni")}]
                 elif "mieru" in url:
-                    profile = jd.get("profiles", [{}])[0]
-                    nodes = [{"name":"Mieru","type":"mieru","server":jd.get("server"),"port":jd.get("port"),"username":profile.get("username"),"password":profile.get("password"),"transport":profile.get("transport","tcp")}]
+                    prof = jd.get("profiles", [{}])[0]
+                    nodes = [{"name":"Mieru","type":"mieru","server":jd.get("server"),"port":jd.get("port"),"username":prof.get("username"),"password":prof.get("password")}]
                 elif "naiveproxy" in url:
-                    match = re.search(r'https://(.*):(.*)@(.*)', jd.get("proxy", ""))
-                    if match:
-                        nodes = [{"name":"Naive","type":"socks5","server":match.group(3),"port":443,"username":match.group(1),"password":match.group(2),"tls":True}]
+                    m = re.search(r'https://(.*):(.*)@(.*)', jd.get("proxy", ""))
+                    if m:
+                        nodes = [{"name":"Naive","type":"socks5","server":m.group(3),"port":443,"username":m.group(1),"password":m.group(2),"tls":True}]
                 elif "hysteria2" in url:
                     s, p = jd["server"].split(":")
-                    nodes = [{"name":"Hys2","type":"hysteria2","server":s,"port":int(p),"password":jd.get("auth"),"sni":jd.get("server_name"),"skip-cert-verify":True}]
+                    nodes = [{"name":"Hys2","type":"hysteria2","server":s,"port":int(p),"password":jd.get("auth"),"sni":jd.get("server_name")}]
                 else:
-                    outbounds = jd.get("outbounds", [])
-                    for out in outbounds:
+                    for out in jd.get("outbounds", []):
                         if out.get("server") and out.get("type") not in ["direct", "block", "dns"]:
-                            nodes.append({
-                                "name": out.get("type").upper(), 
-                                "type": out['type'].replace("shadowsocks","ss"), 
-                                "server": out['server'], 
-                                "port": out['server_port'], 
-                                "uuid": out.get("uuid"), 
-                                "password": out.get("password"), 
-                                "cipher": out.get("method"), 
-                                "sni": out.get("tls", {}).get("server_name")
-                            })
+                            nodes.append({"name":out.get("type").upper(),"type":out['type'].replace("shadowsocks","ss"),"server":out['server'],"port":out['server_port'],"uuid":out.get("uuid"),"password":out.get("password"),"cipher":out.get("method"),"sni":out.get("tls",{}).get("server_name")})
     except: pass
     return nodes
 
 def process_node(proxy):
-    server = proxy.get('server')
-    port = proxy.get('port')
-    if not server or not port: return None
-    
-    delay, ip = get_tcp_delay(server, port)
+    srv, prt = proxy.get('server'), proxy.get('port')
+    if not srv or not prt: return None
+    delay, ip = get_tcp_delay(srv, prt)
     if delay is not None:
-        location = get_location(ip)
-        now_beijing = datetime.now(BEIJING_TZ).strftime("%H:%M")
-        
-        if proxy.get('type') in ['vless', 'trojan', 'vmess', 'hysteria2', '
+        loc = get_location(ip)
+        now = datetime.now(BEIJING_TZ).strftime("%H:%M")
+        # 兼容协议列表 (缩短行长防止断行)
+        tls_types = ['vless', 'trojan', 'vmess', 'hysteria2', 'juicity']
+        if proxy.get('type') in tls_types:
+            proxy['client-fingerprint'] = 'chrome'
+            proxy['tls-fragment'] = "10-30,5-10"
+            proxy['tfo'] = True
+        p_t = proxy.get('type', 'proxy').upper()
+        proxy['_geo'] = loc
+        proxy['name'] = f"[{loc}] {p_t}_{srv} [{delay}ms] ({now})"
+        return proxy
+    return None
+
+if __name__ == "__main__":
+    start_time = time.time()
+    urls = []
+    if os.path.exists(SOURCE_FILE):
+        with open(SOURCE_FILE, 'r', encoding='utf-8') as f:
+            urls = re.findall(r'https?://[^\s",\]]+', f.read())
+    unique_proxies = {}
+    for url in urls:
+        for node in parse_remote(url):
+            s, p, t = node.get('server'), node.get('port'), node.get('type')
+            if s and p and t:
+                try:
+                    key = (str(s).lower(), int(p), str(t).lower())
+                    if key not in unique_proxies: unique_proxies[key] = node
+                except: continue
+    with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
+        final_nodes = [r for r in executor.map(process_node, list(unique_proxies.values())) if r]
+    if final_nodes:
+        if os.path.exists(TEMPLATE_FILE):
+            with open(TEMPLATE_FILE, 'r', encoding='utf-8') as f:
+                tpl = yaml.safe_load(f)
+            tpl['proxies'] = final_nodes
+            shards = {"香港":"🇭🇰 香港节点","美国":"🇺🇸 美国节点","日本":"🇯🇵 日本节点","新加坡":"🇸🇬 新加坡节点"}
+            all_n = [n['name'] for n in final_nodes]
+            for g in tpl.get('proxy-groups', []):
+                if g['name'] in ['🚀 节点选择', '⚡ 自动选择']:
+                    g['proxies'] = all_n if g['name'] == '⚡ 自动选择' else g['proxies'] + all_n
+                for reg, target in shards.items():
+                    if g['name'] == target:
+                        g['proxies'] = [n['name'] for n in final_nodes if reg in n['_geo']]
+                if g['name'] == '🌍 剩余地区':
+                    g['proxies'] = [n['name'] for n in final_nodes if not any(r in n['_geo'] for r in shards.keys())]
+            with open(f"{OUTPUT_DIR}/clash_config.yaml", 'w', encoding='utf-8') as f:
+                yaml.dump(tpl, f, sort_keys=False, allow_unicode=True)
+        links = [to_link(n) for n in final_nodes if to_link(n)]
+        with open(f"{OUTPUT_DIR}/node_links.txt", 'w', encoding='utf-8') as f:
+            f.write("\n".join(links))
+        with open(f"{OUTPUT_DIR}/subscribe_base64.txt", 'w', encoding='utf-8') as f:
