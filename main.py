@@ -3,10 +3,9 @@ from datetime import datetime, timedelta, timezone
 
 warnings.filterwarnings("ignore")
 
-# --- 1. 配置 ---
 OUT_DIR = './sub'
 MANUAL_FILE = './urls/manual_json.txt'
-# 仅保留你客户端 100% 支持的协议，剔除导致报错的 naive
+# 保持兼容性，不加载导致报错的 naive
 SUPPORTED_TYPES = ['vless', 'hysteria2'] 
 
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -23,38 +22,41 @@ def get_geo(ip):
     except: return "🏳️"
 
 def parse_strict(d):
-    """专门针对 VLESS (Reality) 和 HY2 的严格提取"""
+    """多维度判定协议，确保不漏掉 HY2"""
     try:
         if not isinstance(d, dict): return None
         
-        # 提取核心字段：优先适配 Xray/Sing-box 常见的 add/port/id 组合
+        # 提取核心三要素
         s = d.get('add') or d.get('server') or d.get('address')
-        p = d.get('port') or d.get('server_port')
-        u = d.get('id') or d.get('uuid') or d.get('password') or d.get('auth')
+        p = d.get('port') or d.get('server_port') or d.get('listen_port')
+        u = d.get('auth') or d.get('password') or d.get('id') or d.get('uuid')
         
-        if not (s and p and u): return None
+        if not (s and u): return None
         
-        # 处理可能的 host:port 格式
+        # 处理端口连写
         s = str(s).replace('[','').replace(']','')
         if ':' in s and not p:
             s, p = s.rsplit(':', 1)
+        
+        if not p: return None
 
-        # 协议判断
+        # --- 协议判定逻辑优化 ---
         t_raw = str(d.get('type', '')).lower()
-        if 'hy' in t_raw or 'hysteria2' in t_raw or 'auth' in d:
+        # 如果有 auth 字段，或者 type 包含 hy，则判定为 hysteria2
+        if 'auth' in d or 'hy' in t_raw or 'hysteria2' in t_raw:
             t = 'hysteria2'
         else:
             t = 'vless'
 
         node = {"s": s, "p": int(p), "u": str(u), "t": t}
         
-        # --- 重点：提取 VLESS 的 Reality/TLS 参数 ---
+        # 提取 SNI
         tls = d.get('tls', {}) if isinstance(d.get('tls'), dict) else {}
         node["sn"] = d.get('sni') or d.get('servername') or d.get('peer') or tls.get('server_name') or ""
         
-        # Reality 专门提取
+        # 提取 Reality (VLESS 关键)
         ry = d.get('reality') or d.get('reality-opts') or tls.get('reality') or {}
-        if isinstance(ry, dict):
+        if isinstance(ry, dict) and (ry.get('public-key') or ry.get('publicKey')):
             node["pbk"] = ry.get('public-key') or ry.get('publicKey')
             node["sid"] = ry.get('short-id') or ry.get('shortId') or ""
             
@@ -74,14 +76,13 @@ def main():
         urls = list(set(re.findall(r'https?://[^\s\'"\[\],]+', f.read())))
     
     all_nodes = []
-    print(f"📂 正在深度解析 {len(urls)} 个源地址...")
+    print(f"📂 正在扫描 {len(urls)} 个源地址...")
 
     for url in urls:
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=12, context=ctx) as resp:
                 text = resp.read().decode('utf-8', errors='ignore')
-                # 兼容解析 JSON 或 YAML
                 try: data = json.loads(text)
                 except: data = yaml.safe_load(text)
                 if data:
@@ -102,26 +103,22 @@ def main():
     for i, n in enumerate(uniq):
         flag = get_geo(n['s'])
         name = f"{flag} {n['t'].upper()}_{i+1}_{n['s'].split('.')[-1]}"
-        
-        # 构造 Clash 代理格式
         px = {"name": name, "type": n['t'], "server": n['s'], "port": n['p'], "skip-cert-verify": True}
         
         if n['t'] == 'hysteria2':
-            px.update({"password": n['u'], "sni": n['sn'] if n['sn'] else n['s']})
+            px.update({"password": n['u'], "sni": n['sn'] if n['sn'] else "www.bing.com"})
         elif n['t'] == 'vless':
-            # VLESS 必须开启 TLS
-            px.update({"uuid": n['u'], "tls": True, "servername": n['sn'] if n['sn'] else n['s']})
-            # 如果包含 Reality 参数
+            px.update({"uuid": n['u'], "tls": True, "servername": n['sn'] if n['sn'] else "itunes.apple.com"})
             if n.get('pbk'):
                 px.update({
                     "network": "tcp",
-                    "reality-opts": {"public-key": n['pbk'], "short-id": n['sid']}
+                    "reality-opts": {"public-key": n['pbk'], "short-id": n['sid']},
+                    "tfo": True
                 })
         
         clash_px.append(px)
         if i % 15 == 0: time.sleep(0.5)
 
-    # 构造完整 YAML
     conf = {
         "proxies": clash_px,
         "proxy-groups": [
@@ -135,7 +132,7 @@ def main():
     with open(f"{OUT_DIR}/clash.yaml", 'w', encoding='utf-8') as f:
         yaml.dump(conf, f, allow_unicode=True, sort_keys=False)
     
-    print(f"✅ 完成！VLESS 与 HY2 节点总数: {len(clash_px)}")
+    print(f"✅ 成功！HY2 与 VLESS 已同步，节点总数: {len(clash_px)}")
 
 if __name__ == "__main__":
     main()
