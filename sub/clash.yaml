@@ -1,5 +1,42 @@
 proxies:
-- name: VLESS_0.13_1
+- name: HYSTERIA2_43_1
+  type: hysteria2
+  server: 157.254.223.43
+  port: 27921
+  skip-cert-verify: true
+  password: dongtaiwang.com
+  sni: ''
+- name: HYSTERIA2_146_2
+  type: hysteria2
+  server: 62.210.124.146
+  port: 22000
+  skip-cert-verify: true
+  password: dongtaiwang.com
+  sni: ''
+- name: VLESS_44_3
+  type: vless
+  server: 157.254.223.44
+  port: 18959
+  skip-cert-verify: true
+  uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
+  tls: true
+  servername: itunes.apple.com
+- name: VLESS_48_4
+  type: vless
+  server: 157.254.223.48
+  port: 33990
+  skip-cert-verify: true
+  uuid: dongtaiwang.com
+  tls: true
+  servername: ''
+- name: HYSTERIA2_63_5
+  type: hysteria2
+  server: 51.158.194.63
+  port: 32952
+  skip-cert-verify: true
+  password: dongtaiwang.com
+  sni: ''
+- name: VLESS_13_6
   type: vless
   server: 195.154.200.13
   port: 17401
@@ -11,7 +48,23 @@ proxies:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
   network: tcp
-- name: VLESS_1::2_2
+- name: VLESS_231_7
+  type: vless
+  server: 89.144.35.231
+  port: 33457
+  skip-cert-verify: true
+  uuid: dongtaiwang.com
+  tls: true
+  servername: apple.com
+- name: VLESS_v6_8
+  type: vless
+  server: 2a14:7583:299d::a
+  port: 33457
+  skip-cert-verify: true
+  uuid: dongtaiwang.com
+  tls: true
+  servername: apple.com
+- name: VLESS_v6_9
   type: vless
   server: 2001:bc8:32d7:181::2
   port: 17401
@@ -23,7 +76,7 @@ proxies:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
   network: tcp
-- name: VLESS_1::3_3
+- name: VLESS_v6_10
   type: vless
   server: 2001:bc8:32d7:181::3
   port: 17401
@@ -35,52 +88,7 @@ proxies:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
   network: tcp
-- name: HYSTERIA2_3.43_4
-  type: hysteria2
-  server: 157.254.223.43
-  port: 27921
-  skip-cert-verify: true
-  password: dongtaiwang.com
-  sni: ''
-- name: VLESS_3.48_5
-  type: vless
-  server: 157.254.223.48
-  port: 33990
-  skip-cert-verify: true
-  uuid: dongtaiwang.com
-  tls: true
-  servername: ''
-- name: VLESS_.232_6
-  type: vless
-  server: 89.144.35.232
-  port: 15531
-  skip-cert-verify: true
-  uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
-  tls: true
-  servername: itunes.apple.com
-- name: HYSTERIA2_4.63_7
-  type: hysteria2
-  server: 51.158.194.63
-  port: 32952
-  skip-cert-verify: true
-  password: dongtaiwang.com
-  sni: ''
-- name: HYSTERIA2_.146_8
-  type: hysteria2
-  server: 62.210.124.146
-  port: 22000
-  skip-cert-verify: true
-  password: dongtaiwang.com
-  sni: ''
-- name: VLESS_3.44_9
-  type: vless
-  server: 157.254.223.44
-  port: 18959
-  skip-cert-verify: true
-  uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
-  tls: true
-  servername: itunes.apple.com
-- name: VLESS_3.48_10
+- name: VLESS_48_11
   type: vless
   server: 157.254.223.48
   port: 45889
@@ -88,7 +96,7 @@ proxies:
   uuid: dongtaiwang.com
   tls: true
   servername: us3.193919.xyz
-- name: VLESS_8.14_11
+- name: VLESS_14_12
   type: vless
   server: 45.221.98.14
   port: 59901
@@ -96,38 +104,58 @@ proxies:
   uuid: dongtaiwang.com
   tls: true
   servername: ''
-- name: VLESS_.231_12
+- name: VLESS_232_13
   type: vless
-  server: 89.144.35.231
-  port: 33457
+  server: 89.144.35.232
+  port: 15531
   skip-cert-verify: true
-  uuid: dongtaiwang.com
+  uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
   tls: true
-  servername: apple.com
-- name: VLESS_d::a_13
-  type: vless
-  server: 2a14:7583:299d::a
-  port: 33457
-  skip-cert-verify: true
-  uuid: dongtaiwang.com
-  tls: true
-  servername: apple.com
+  servername: itunes.apple.com
 proxy-groups:
-- name: PROXY
+- name: 🚀 自动测速
+  type: url-test
+  proxies:
+  - HYSTERIA2_43_1
+  - HYSTERIA2_146_2
+  - VLESS_44_3
+  - VLESS_48_4
+  - HYSTERIA2_63_5
+  - VLESS_13_6
+  - VLESS_231_7
+  - VLESS_v6_8
+  - VLESS_v6_9
+  - VLESS_v6_10
+  - VLESS_48_11
+  - VLESS_14_12
+  - VLESS_232_13
+  url: http://www.gstatic.com/generate_204
+  interval: 300
+- name: 🔰 手动切换
   type: select
   proxies:
-  - VLESS_0.13_1
-  - VLESS_1::2_2
-  - VLESS_1::3_3
-  - HYSTERIA2_3.43_4
-  - VLESS_3.48_5
-  - VLESS_.232_6
-  - HYSTERIA2_4.63_7
-  - HYSTERIA2_.146_8
-  - VLESS_3.44_9
-  - VLESS_3.48_10
-  - VLESS_8.14_11
-  - VLESS_.231_12
-  - VLESS_d::a_13
+  - 🚀 自动测速
+  - HYSTERIA2_43_1
+  - HYSTERIA2_146_2
+  - VLESS_44_3
+  - VLESS_48_4
+  - HYSTERIA2_63_5
+  - VLESS_13_6
+  - VLESS_231_7
+  - VLESS_v6_8
+  - VLESS_v6_9
+  - VLESS_v6_10
+  - VLESS_48_11
+  - VLESS_14_12
+  - VLESS_232_13
+- name: 🎯 全球直连
+  type: select
+  proxies:
+  - DIRECT
+  - 🔰 手动切换
 rules:
-- MATCH,PROXY
+- DOMAIN-SUFFIX,google.com,🔰 手动切换
+- DOMAIN-KEYWORD,youtube,🔰 手动切换
+- DOMAIN-KEYWORD,github,🔰 手动切换
+- GEOIP,CN,🎯 全球直连
+- MATCH,🔰 手动切换
