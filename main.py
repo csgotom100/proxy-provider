@@ -51,6 +51,15 @@ def handle_sq(d):
         return {"s":h,"p":int(pt),"u":str(u or "user"),"pw":str(pw),"t":"shadowquic","sn":d.get('server-name','www.yahoo.com'),"cc":d.get('congestion_control','bbr')}
     except: return None
 
+def handle_mieru(d):
+    try:
+        usr, srv = d.get('user', {}), d.get('servers', [{}])[0]
+        pts = srv.get('portBindings', [{}])[0]
+        s, u, p = srv.get('ipAddress'), usr.get('name'), pts.get('port')
+        if not (s and u and p): return None
+        return {"s":str(s),"p":int(p),"u":str(u),"pw":str(usr.get('password')),"t":"mieru"}
+    except: return None
+
 def find_dicts(obj):
     if isinstance(obj, dict):
         yield obj
@@ -70,7 +79,7 @@ def main():
                 raw = resp.read().decode('utf-8', errors='ignore')
                 data = json.loads(raw) if '{' in raw else yaml.safe_load(raw)
                 for d in find_dicts(data):
-                    n = handle_vless(d) or handle_hy2(d) or handle_juicity(d) or handle_naive(d) or handle_sq(d)
+                    n = handle_vless(d) or handle_hy2(d) or handle_juicity(d) or handle_naive(d) or handle_sq(d) or handle_mieru(d)
                     if n: nodes.append(n)
         except: continue
     
@@ -81,8 +90,11 @@ def main():
 
     for i, n in enumerate(uniq):
         nm = f"🌐 {n['t'].upper()}_{i+1}_{n['s'][-5:]}"
+        # 通用 Clash 属性
         px = {"name": nm, "server": n['s'], "port": n['p'], "skip-cert-verify": True}
-        # Clash 逻辑
+        
+        # Clash 协议适配与过滤
+        is_clash_compatible = True
         if n['t'] == 'vless':
             px.update({"type":"vless","uuid":n['u'],"tls":True,"servername":n['sn'],"network":n.get('net','tcp'),"udp":True})
             if n.get('pbk'): px.update({"reality-opts":{"public-key":n['pbk'],"short-id":n.get('sid','')}})
@@ -95,25 +107,30 @@ def main():
         elif n['t'] == 'juicity':
             px.update({"type":"juicity","uuid":n['u'],"password":n['pw'],"sni":n['sn'],"congestion-control":n.get('cc','bbr')})
             v2_links.append(f"juicity://{n['u']}:{n['pw']}@{n['s']}:{n['p']}?sni={n['sn']}#{nm}")
-        elif n['t'] == 'shadowquic':
-            px.update({"type":"shadowquic","username":n['u'],"password":n['pw'],"sni":n['sn'],"congestion-control":n.get('cc','bbr')})
-        clash_px.append(px)
+        else:
+            # ShadowQuic 和 Mieru 在此过滤，不进入 Clash 配置文件以防报错
+            is_clash_compatible = False
+            if n['t'] == 'shadowquic':
+                v2_links.append(f"shadowquic://{n['u']}:{n['pw']}@{n['s']}:{n['p']}?sni={n['sn']}#{nm}")
 
-    # 保存 Clash
+        if is_clash_compatible:
+            clash_px.append(px)
+
+    # 保存 Clash (只包含兼容协议)
     conf = {"proxies": clash_px, "proxy-groups": [{"name": "🚀 🚀", "type": "url-test", "proxies": [p['name'] for p in clash_px], "url": "http://www.gstatic.com/generate_204", "interval": 300}, {"name": "🔰 🔰", "type": "select", "proxies": ["🚀 🚀"] + [p['name'] for p in clash_px]}], "rules": ["MATCH,🔰 🔰"]}
     with open(f"{OUT_DIR}/clash.yaml", 'w', encoding='utf-8') as f:
         yaml.dump(conf, f, allow_unicode=True, sort_keys=False)
 
-    # 保存 node.txt (明文)
+    # 保存 node.txt (包含所有可转换的原始链接)
     with open(f"{OUT_DIR}/node.txt", 'w', encoding='utf-8') as f:
         f.write("\n".join(v2_links))
 
-    # 保存 sub.txt (Base64)
+    # 保存 sub.txt (Base64 订阅)
     v2_base64 = base64.b64encode("\n".join(v2_links).encode('utf-8')).decode('utf-8')
     with open(f"{OUT_DIR}/sub.txt", 'w', encoding='utf-8') as f:
         f.write(v2_base64)
 
-    print(f"✅ Success! Clash: {len(clash_px)}, Links: {len(v2_links)}")
+    print(f"✅ Final! Clash: {len(clash_px)}, V2Ray Links: {len(v2_links)}")
 
 if __name__ == "__main__":
     main()
