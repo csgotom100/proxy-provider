@@ -1,5 +1,13 @@
 proxies:
-- name: 🇺🇸 VLESS_1_44
+- name: 🇺🇸 VLESS_1_48
+  type: vless
+  server: 157.254.223.48
+  port: 45889
+  skip-cert-verify: true
+  uuid: dongtaiwang.com
+  tls: true
+  servername: us3.193919.xyz
+- name: 🇺🇸 VLESS_2_44
   type: vless
   server: 157.254.223.44
   port: 18959
@@ -7,7 +15,7 @@ proxies:
   uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
   tls: true
   servername: itunes.apple.com
-- name: 🇷🇴 VLESS_2_232
+- name: 🇷🇴 VLESS_3_232
   type: vless
   server: 89.144.35.232
   port: 15531
@@ -15,21 +23,41 @@ proxies:
   uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
   tls: true
   servername: itunes.apple.com
+- name: 🇫🇷 HYSTERIA2_4_146
+  type: hysteria2
+  server: 62.210.124.146
+  port: 22000
+  skip-cert-verify: true
+  password: dongtaiwang.com
+  sni: www.bing.com
+- name: 🇳🇱 HYSTERIA2_5_63
+  type: hysteria2
+  server: 51.158.194.63
+  port: 32952
+  skip-cert-verify: true
+  password: dongtaiwang.com
+  sni: www.bing.com
 proxy-groups:
 - name: 🚀 自动选择
   type: url-test
   proxies:
-  - 🇺🇸 VLESS_1_44
-  - 🇷🇴 VLESS_2_232
+  - 🇺🇸 VLESS_1_48
+  - 🇺🇸 VLESS_2_44
+  - 🇷🇴 VLESS_3_232
+  - 🇫🇷 HYSTERIA2_4_146
+  - 🇳🇱 HYSTERIA2_5_63
   url: http://www.gstatic.com/generate_204
   interval: 300
 - name: 🔰 手动切换
   type: select
   proxies:
   - 🚀 自动选择
-  - 🇺🇸 VLESS_1_44
-  - 🇷🇴 VLESS_2_232
-- name: '🕒 更新: 2026-01-03 22:26'
+  - 🇺🇸 VLESS_1_48
+  - 🇺🇸 VLESS_2_44
+  - 🇷🇴 VLESS_3_232
+  - 🇫🇷 HYSTERIA2_4_146
+  - 🇳🇱 HYSTERIA2_5_63
+- name: '🕒 更新: 2026-01-03 22:30'
   type: select
   proxies:
   - 🚀 自动选择
