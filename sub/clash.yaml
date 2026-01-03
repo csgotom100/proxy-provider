@@ -1,29 +1,21 @@
 proxies:
-- server: 195.154.200.13
-  port: 17401
-  type: vless
-  sni: null
-  skip-cert-verify: true
-  uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
-  reality-opts:
-    public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
-    short-id: 8ef4455ba637425b
-  name: '[法国] VLESS_0.13'
 - server: 157.254.223.44
   port: 18959
   type: vless
-  sni: null
-  skip-cert-verify: true
   uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
-  reality-opts:
-    public-key: -hwVEdgFkvjku8ESuDoAA7id5yGGv_zXBvBW_RdhmHA
-    short-id: d557c6895d014075
-  name: '[美国] VLESS_3.44'
+  password: null
+  sni: null
+  name: VLESS_23.44_31ms
+- server: 195.154.200.13
+  port: 17401
+  type: vless
+  uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
+  password: null
+  sni: null
+  name: VLESS_00.13_126ms
 proxy-groups:
 - name: PROXY
   type: select
   proxies:
-  - '[法国] VLESS_0.13'
-  - '[美国] VLESS_3.44'
-rules:
-- MATCH,PROXY
+  - VLESS_23.44_31ms
+  - VLESS_00.13_126ms
