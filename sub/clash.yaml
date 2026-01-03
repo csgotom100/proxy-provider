@@ -1,33 +1,33 @@
 proxies:
-- name: 🌐 HYSTERIA2_1
+- name: 🌐 HYSTERIA2_1_23.43
   server: 157.254.223.43
   port: 27921
   skip-cert-verify: true
   type: hysteria2
   password: dongtaiwang.com
   sni: www.apple.com
-- name: 🌐 HYSTERIA2_2
+- name: 🌐 HYSTERIA2_2_4.146
   server: 62.210.124.146
   port: 22000
   skip-cert-verify: true
   type: hysteria2
   password: dongtaiwang.com
   sni: www.apple.com
-- name: 🌐 HYSTERIA2_3
+- name: 🌐 HYSTERIA2_3_94.63
   server: 51.158.194.63
   port: 32952
   skip-cert-verify: true
   type: hysteria2
   password: dongtaiwang.com
   sni: www.apple.com
-- name: 🌐 HYSTERIA2_4
+- name: 🌐 HYSTERIA2_4_23.48
   server: 157.254.223.48
   port: 45889
   skip-cert-verify: true
   type: hysteria2
   password: dongtaiwang.com
   sni: us3.193919.xyz
-- name: 🌐 NAIVE_5
+- name: 🌐 NAIVE_5_9.xyz
   server: us.193919.xyz
   port: 44000
   skip-cert-verify: true
@@ -37,7 +37,7 @@ proxies:
   tls: true
   sni: us.193919.xyz
   proxy-octet-stream: true
-- name: 🌐 NAIVE_6
+- name: 🌐 NAIVE_6_2.xyz
   server: naive1.336892.xyz
   port: 22338
   skip-cert-verify: true
@@ -47,57 +47,136 @@ proxies:
   tls: true
   sni: naive1.336892.xyz
   proxy-octet-stream: true
-- name: 🌐 VLESS_7
+- name: 🌐 MIERU_7_98.11
+  server: 45.221.98.11
+  port: 28866
+  skip-cert-verify: true
+  type: socks5
+  username: dongtaiwang.com
+  password: dongtaiwang.com
+- name: 🌐 MIERU_8_23.48
+  server: 157.254.223.48
+  port: 33990
+  skip-cert-verify: true
+  type: socks5
+  username: dongtaiwang.com
+  password: dongtaiwang.com
+- name: 🌐 SHADOWQUIC_9_23.43
+  server: 157.254.223.43
+  port: 1443
+  skip-cert-verify: true
+  type: shadowquic
+  username: dongtaiwang.com
+  password: dongtaiwang.com
+  sni: www.yahoo.com
+  congestion-control: bbr
+- name: 🌐 SHADOWQUIC_10_5.xyz
+  server: fan2.394615.xyz
+  port: 1443
+  skip-cert-verify: true
+  type: shadowquic
+  username: dongtaiwang.com
+  password: dongtaiwang.com
+  sni: www.yahoo.com
+  congestion-control: bbr
+- name: 🌐 VLESS_11_7.177
+  server: 62.210.127.177
+  port: 60011
+  skip-cert-verify: true
+  type: vless
+  uuid: a1f699e4-d7b7-4cdc-8414-1105e08fe4c5
+  tls: true
+  servername: www.pixiv.co.jp
+  network: xhttp
+  udp: true
+  reality-opts:
+    public-key: BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic
+    short-id: ea22dff3025e4ff8
+- name: 🌐 VLESS_12_5.230
+  server: 89.144.35.230
+  port: 54582
+  skip-cert-verify: true
+  type: vless
+  uuid: 5cfc52bc-e701-4160-89df-930a0c040576
+  tls: true
+  servername: apple.com
+  network: xhttp
+  udp: true
+  reality-opts:
+    public-key: kfw5DgkyKiovC3dzb-o2PUYnZPnbYvbx2IwERUv9czY
+    short-id: 225e2cc8
+- name: 🌐 VLESS_13_4f::6
+  server: 2001:bc8:32d7:14f::6
+  port: 60011
+  skip-cert-verify: true
+  type: vless
+  uuid: a1f699e4-d7b7-4cdc-8414-1105e08fe4c5
+  tls: true
+  servername: www.pixiv.co.jp
+  network: xhttp
+  udp: true
+  reality-opts:
+    public-key: BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic
+    short-id: ea22dff3025e4ff8
+- name: 🌐 VLESS_14_23.44
   server: 157.254.223.44
   port: 18959
   skip-cert-verify: true
   type: vless
   uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
   tls: true
-  servername: itunes.apple.com
+  servername: www.apple.com
   network: tcp
   udp: true
-  reality-opts:
-    public-key: -hwVEdgFkvjku8ESuDoAA7id5yGGv_zXBvBW_RdhmHA
-    short-id: d557c6895d014075
-- name: 🌐 VLESS_8
+- name: 🌐 VLESS_15_5.232
   server: 89.144.35.232
   port: 15531
   skip-cert-verify: true
   type: vless
   uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
   tls: true
-  servername: itunes.apple.com
+  servername: www.apple.com
   network: tcp
   udp: true
-  reality-opts:
-    public-key: o4gXQf1n5YOoLo6OnyHykodK1ZShHvDqu1FgxNHe6n8
-    short-id: 8346964417a2552b
 proxy-groups:
-- name: 🚀 自动选择
+- name: 🚀 🚀
   type: url-test
   proxies:
-  - 🌐 HYSTERIA2_1
-  - 🌐 HYSTERIA2_2
-  - 🌐 HYSTERIA2_3
-  - 🌐 HYSTERIA2_4
-  - 🌐 NAIVE_5
-  - 🌐 NAIVE_6
-  - 🌐 VLESS_7
-  - 🌐 VLESS_8
+  - 🌐 HYSTERIA2_1_23.43
+  - 🌐 HYSTERIA2_2_4.146
+  - 🌐 HYSTERIA2_3_94.63
+  - 🌐 HYSTERIA2_4_23.48
+  - 🌐 NAIVE_5_9.xyz
+  - 🌐 NAIVE_6_2.xyz
+  - 🌐 MIERU_7_98.11
+  - 🌐 MIERU_8_23.48
+  - 🌐 SHADOWQUIC_9_23.43
+  - 🌐 SHADOWQUIC_10_5.xyz
+  - 🌐 VLESS_11_7.177
+  - 🌐 VLESS_12_5.230
+  - 🌐 VLESS_13_4f::6
+  - 🌐 VLESS_14_23.44
+  - 🌐 VLESS_15_5.232
   url: http://www.gstatic.com/generate_204
   interval: 300
-- name: 🔰 手动切换
+- name: 🔰 🔰
   type: select
   proxies:
-  - 🚀 自动选择
-  - 🌐 HYSTERIA2_1
-  - 🌐 HYSTERIA2_2
-  - 🌐 HYSTERIA2_3
-  - 🌐 HYSTERIA2_4
-  - 🌐 NAIVE_5
-  - 🌐 NAIVE_6
-  - 🌐 VLESS_7
-  - 🌐 VLESS_8
+  - 🚀 🚀
+  - 🌐 HYSTERIA2_1_23.43
+  - 🌐 HYSTERIA2_2_4.146
+  - 🌐 HYSTERIA2_3_94.63
+  - 🌐 HYSTERIA2_4_23.48
+  - 🌐 NAIVE_5_9.xyz
+  - 🌐 NAIVE_6_2.xyz
+  - 🌐 MIERU_7_98.11
+  - 🌐 MIERU_8_23.48
+  - 🌐 SHADOWQUIC_9_23.43
+  - 🌐 SHADOWQUIC_10_5.xyz
+  - 🌐 VLESS_11_7.177
+  - 🌐 VLESS_12_5.230
+  - 🌐 VLESS_13_4f::6
+  - 🌐 VLESS_14_23.44
+  - 🌐 VLESS_15_5.232
 rules:
-- MATCH,🔰 手动切换
+- MATCH,🔰 🔰
