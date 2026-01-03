@@ -1,21 +1,20 @@
 proxies:
-- name: 🇺🇸 VLESS_1_48
-  type: vless
-  server: 157.254.223.48
-  port: 45889
+- name: Node_1_HYSTERIA2_146
+  type: hysteria2
+  server: 62.210.124.146
+  port: 22000
   skip-cert-verify: true
-  uuid: dongtaiwang.com
-  tls: true
-  servername: us3.193919.xyz
-- name: 🇺🇸 VLESS_2_44
-  type: vless
-  server: 157.254.223.44
-  port: 18959
+  password: null
+  sni: bing.com
+- name: Node_2_NAIVE_xyz
+  type: naive
+  server: us.193919.xyz
+  port: 44000
   skip-cert-verify: true
-  uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
-  tls: true
-  servername: itunes.apple.com
-- name: 🇷🇴 VLESS_3_232
+  username: dongtaiwang.com
+  password: dongtaiwang.com
+  proxy-octet-stream: true
+- name: Node_3_VLESS_232
   type: vless
   server: 89.144.35.232
   port: 15531
@@ -23,43 +22,56 @@ proxies:
   uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
   tls: true
   servername: itunes.apple.com
-- name: 🇫🇷 HYSTERIA2_4_146
-  type: hysteria2
-  server: 62.210.124.146
-  port: 22000
+  network: tcp
+  reality-opts:
+    public-key: o4gXQf1n5YOoLo6OnyHykodK1ZShHvDqu1FgxNHe6n8
+    short-id: 8346964417a2552b
+- name: Node_4_VLESS_44
+  type: vless
+  server: 157.254.223.44
+  port: 18959
   skip-cert-verify: true
-  password: dongtaiwang.com
-  sni: www.bing.com
-- name: 🇳🇱 HYSTERIA2_5_63
+  uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
+  tls: true
+  servername: itunes.apple.com
+  network: tcp
+  reality-opts:
+    public-key: -hwVEdgFkvjku8ESuDoAA7id5yGGv_zXBvBW_RdhmHA
+    short-id: d557c6895d014075
+- name: Node_5_HYSTERIA2_48
+  type: hysteria2
+  server: 157.254.223.48
+  port: 45889
+  skip-cert-verify: true
+  password: null
+  sni: bing.com
+- name: Node_6_HYSTERIA2_63
   type: hysteria2
   server: 51.158.194.63
   port: 32952
   skip-cert-verify: true
+  password: null
+  sni: bing.com
+- name: Node_7_NAIVE_xyz
+  type: naive
+  server: naive1.336892.xyz
+  port: 22338
+  skip-cert-verify: true
+  username: dongtaiwang.com
   password: dongtaiwang.com
-  sni: www.bing.com
+  proxy-octet-stream: true
 proxy-groups:
 - name: 🚀 自动选择
   type: url-test
   proxies:
-  - 🇺🇸 VLESS_1_48
-  - 🇺🇸 VLESS_2_44
-  - 🇷🇴 VLESS_3_232
-  - 🇫🇷 HYSTERIA2_4_146
-  - 🇳🇱 HYSTERIA2_5_63
+  - Node_1_HYSTERIA2_146
+  - Node_2_NAIVE_xyz
+  - Node_3_VLESS_232
+  - Node_4_VLESS_44
+  - Node_5_HYSTERIA2_48
+  - Node_6_HYSTERIA2_63
+  - Node_7_NAIVE_xyz
   url: http://www.gstatic.com/generate_204
   interval: 300
-- name: 🔰 手动切换
-  type: select
-  proxies:
-  - 🚀 自动选择
-  - 🇺🇸 VLESS_1_48
-  - 🇺🇸 VLESS_2_44
-  - 🇷🇴 VLESS_3_232
-  - 🇫🇷 HYSTERIA2_4_146
-  - 🇳🇱 HYSTERIA2_5_63
-- name: '🕒 更新: 2026-01-03 22:30'
-  type: select
-  proxies:
-  - 🚀 自动选择
 rules:
-- MATCH,🔰 手动切换
+- MATCH,🚀 自动选择
