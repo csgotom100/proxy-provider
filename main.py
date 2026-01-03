@@ -7,47 +7,55 @@ ctx = ssl._create_unverified_context()
 
 def handle_vless(d):
     try:
-        # 获取基础连接信息
-        if 'vnext' in d.get('settings', {}):
+        # 1. 基础字段提取 (适配 sing-box/xray 不同字段名)
+        s = d.get('server') or d.get('add')
+        p = d.get('server_port') or d.get('port')
+        u = d.get('uuid') or d.get('id')
+        
+        # 处理嵌套在 vnext 中的情况 (xray 风格)
+        if not s and 'vnext' in d.get('settings', {}):
             v = d['settings']['vnext'][0]
             s, p, u = v.get('address'), v.get('port'), v['users'][0].get('id')
-        else:
-            s, p, u = d.get('server') or d.get('add'), d.get('server_port') or d.get('port'), d.get('uuid') or d.get('id')
-        
+            
         if not (s and u): return None
-        
-        # 提取传输层和安全层配置 (Strictly from JSON)
+
+        # 2. 传输层与安全层初始化
+        net = d.get('transport', {}).get('type') or d.get('net', 'tcp')
+        sec = 'none'
+        sn, pbk, sid, fp = None, None, None, None
+
+        # 3. 严格解析 sing-box 风格的 TLS/Reality 结构
+        tls = d.get('tls', {})
+        if tls.get('enabled') or d.get('security') in ['tls', 'reality']:
+            sec = 'tls'
+            sn = tls.get('server_name') or d.get('sni')
+            
+            # 解析 sing-box 风格的指纹
+            fp = tls.get('utls', {}).get('fingerprint')
+            
+            # 解析 sing-box 风格的 Reality
+            ry = tls.get('reality', {})
+            if ry.get('enabled'):
+                sec = 'reality'
+                pbk = ry.get('public_key')
+                sid = ry.get('short_id')
+
+        # 4. 严格解析 xray 风格的 streamSettings
         ss = d.get('streamSettings', {})
-        net = ss.get('network', d.get('net', 'tcp'))
-        sec = ss.get('security', d.get('security', 'none'))
-        
-        node = {
+        if not sn: # 如果 sing-box 风格没抓到，尝试解析 xray 风格
+            net = ss.get('network') or net
+            sec = ss.get('security') or sec
+            rl = ss.get('realitySettings') or d.get('reality')
+            if rl:
+                sn = rl.get('serverName') or sn
+                pbk = rl.get('publicKey') or pbk
+                sid = rl.get('shortId') or sid
+                fp = rl.get('fingerprint') or fp
+
+        return {
             "s": str(s), "p": int(p), "u": str(u), "t": "vless",
-            "net": net, "sec": sec, "sn": None, "pbk": None, "sid": None,
-            "path": None, "host": None, "fp": None
+            "net": net, "sec": sec, "sn": sn, "pbk": pbk, "sid": sid, "fp": fp
         }
-
-        # 处理 Reality 逻辑 (仅当 JSON 存在时提取)
-        rl = ss.get('realitySettings', d.get('reality'))
-        if rl:
-            node["sn"] = rl.get('serverName')
-            node["pbk"] = rl.get('publicKey')
-            node["sid"] = rl.get('shortId')
-            node["fp"] = rl.get('fingerprint')
-
-        # 处理 TLS/SNI 逻辑 (如果不是 Reality 而是普通 TLS)
-        tls = ss.get('tlsSettings', d.get('tls'))
-        if tls and not node["sn"]:
-            node["sn"] = tls.get('serverName') or d.get('sni')
-
-        # 处理传输层设置 (WS/GRPC/XHTTP/H2)
-        ts = ss.get(f"{net}Settings")
-        if ts:
-            node["path"] = ts.get('path') or d.get('path')
-            h_obj = ts.get('headers', {})
-            node["host"] = h_obj.get('Host') or d.get('host')
-
-        return node
     except: return None
 
 def handle_hy2(d):
@@ -106,15 +114,12 @@ def main():
                 if n['fp']: px["client-fingerprint"] = n['fp']
             if n['sec'] == 'reality' and n['pbk']:
                 px["reality-opts"] = {"public-key": n['pbk'], "short-id": n['sid'] or ""}
-            if n['net'] in ['ws', 'grpc', 'xhttp']:
-                px[f"{n['net']}-opts"] = {k: v for k, v in {"path": n['path'], "headers": {"Host": n['host']} if n['host'] else None}.items() if v}
             
-            # 生成 v2rayN 链接 (严格匹配)
-            link = f"vless://{n['u']}@{n['s']}:{n['p']}?type={n['net']}&security={n['sec']}"
+            # 严格按照你验证通过的链接格式生成
+            link = f"vless://{n['u']}@{n['s']}:{n['p']}?encryption=none&security={n['sec']}&type={n['net']}"
             if n['sn']: link += f"&sni={n['sn']}"
             if n['fp']: link += f"&fp={n['fp']}"
             if n['pbk']: link += f"&pbk={n['pbk']}&sid={n['sid'] or ''}"
-            if n['path']: link += f"&path={n['path']}"
             v2_links.append(f"{link}#{nm}")
         
         elif n['t'] == 'hysteria2':
@@ -131,6 +136,6 @@ def main():
     with open(f"{OUT_DIR}/clash.yaml",'w',encoding='utf-8') as f: yaml.dump(conf, f, allow_unicode=True, sort_keys=False)
     with open(f"{OUT_DIR}/node.txt",'w',encoding='utf-8') as f: f.write("\n".join(v2_links))
     with open(f"{OUT_DIR}/sub.txt",'w',encoding='utf-8') as f: f.write(base64.b64encode("\n".join(v2_links).encode()).decode())
-    print(f"✅ Success: {len(clash_px)}")
+    print(f"✅ Success! VLESS (Reality): {len([x for x in uniq if x['t']=='vless' and x['sec']=='reality'])}")
 
 if __name__ == "__main__": main()
