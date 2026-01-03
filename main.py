@@ -53,75 +53,110 @@ def to_link(p):
         if not srv or not prt: return None
         ptype = p.get('type', '').lower()
         
-        if ptype == 'hysteria2':
-            pw, sn = p.get('password',''), p.get('sni','')
-            return f"hy2://{pw}@{srv}:{prt}?insecure=1&sni={sn}#{name}"
-        elif ptype == 'ss':
-            m, pw = p.get('cipher'), p.get('password')
-            if not m or not pw: return None
-            auth = base64.b64encode(f"{m}:{pw}".encode()).decode()
-            return f"ss://{auth}@{srv}:{prt}#{name}"
-        elif ptype == 'vless':
+        if ptype == 'vless':
             uuid = p.get('uuid')
-            sni = p.get('sni', '')
-            return f"vless://{uuid}@{srv}:{prt}?encryption=none&security=tls&sni={sni}#{name}"
+            # 基础参数
+            link = f"vless://{uuid}@{srv}:{prt}?encryption=none"
+            # TLS/REALITY 参数
+            security = p.get('security', 'none')
+            link += f"&security={security}"
+            if p.get('sni'): link += f"&sni={p.get('sni')}"
+            
+            if p.get('reality'):
+                r = p['reality']
+                link += f"&fp={r.get('fp','chrome')}&pbk={r.get('pbk')}&sid={r.get('sid')}"
+            
+            # 传输层
+            if p.get('network') == 'xhttp':
+                link += f"&type=xhttp&path={urllib.parse.quote(p.get('path','/'))}"
+            
+            return f"{link}#{name}"
+            
+        elif ptype == 'hysteria2':
+            return f"hy2://{p.get('password','')}@{srv}:{prt}?insecure=1&sni={p.get('sni','')}#{name}"
         elif ptype == 'juicity':
-            uuid = p.get('uuid','')
-            sni = p.get('sni','')
-            return f"juicity://{uuid}@{srv}:{prt}?sni={sni}#{name}"
-        elif ptype == 'vmess':
-            v_conf = {"v":"2","ps":p.get('name'),"add":srv,"port":prt,"id":p.get('uuid'),"aid":"0","net":"tcp","type":"none","tls":"tls"}
-            v_b64 = base64.b64encode(json.dumps(v_conf).encode()).decode()
-            return f"vmess://{v_b64}"
+            return f"juicity://{p.get('uuid')}@{srv}:{prt}?sni={p.get('sni')}#{name}"
+        elif ptype == 'socks5':
+            return f"socks5://{p.get('username')}:{p.get('password')}@{srv}:{prt}#{name}"
     except: return None
     return None
 
 def parse_remote(url):
     nodes = []
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     try:
-        print(f"DEBUG: 抓取源: {url}")
-        req = urllib.request.Request(url, headers=headers)
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=15) as res:
             raw = res.read().decode('utf-8')
-            if "clash" in url or "shadowquic" in url or url.endswith((".yaml", ".yml")):
-                data = yaml.safe_load(raw)
-                if data and 'proxies' in data: nodes = data.get('proxies', [])
-            else:
-                jd = json.loads(raw)
-                if "juicity" in url:
-                    s, p = jd["server"].split(":")
-                    nodes = [{"name":"Juicity","type":"juicity","server":s,"port":int(p),"uuid":jd.get("uuid"),"sni":jd.get("sni")}]
-                elif "hysteria2" in url:
-                    s, p = jd["server"].split(":")
-                    nodes = [{"name":"Hys2","type":"hysteria2","server":s,"port":int(p),"password":jd.get("auth"),"sni":jd.get("server_name")}]
-                else:
-                    for out in jd.get("outbounds", []):
-                        if out.get("server") and out.get("type") not in ["direct", "block", "dns"]:
-                            nodes.append({"name":out.get("type").upper(),"type":out['type'].replace("shadowsocks","ss"),"server":out['server'],"port":out['server_port'],"uuid":out.get("uuid"),"password":out.get("password"),"cipher":out.get("method"),"sni":out.get("tls",{}).get("server_name")})
-        print(f"INFO: 源获取了 {len(nodes)} 个原始节点")
-    except Exception as e: print(f"ERROR: 失败 {url}: {e}")
+            data = yaml.safe_load(raw)
+            if not isinstance(data, dict): return []
+
+            # --- 识别 Sing-box 格式 (outbounds 包含 type) ---
+            if "outbounds" in data:
+                for out in data["outbounds"]:
+                    # 仅抓取代理类协议
+                    if out.get("type") in ["vless", "shadowsocks", "trojan", "hysteria2", "tuic"]:
+                        # 兼容 Sing-box 字段名 (server_port) 与 Xray 字段名 (port)
+                        port = out.get("server_port") or out.get("port")
+                        server = out.get("server")
+                        if not server or not port: continue
+                        
+                        node = {
+                            "name": "SB_" + out.get("type").upper(),
+                            "type": out.get("type"),
+                            "server": server,
+                            "port": int(port),
+                            "uuid": out.get("uuid"),
+                            "password": out.get("password")
+                        }
+                        
+                        # 处理 Sing-box 嵌套的 TLS/REALITY
+                        tls_conf = out.get("tls", {})
+                        if tls_conf.get("enabled"):
+                            node["security"] = "reality" if tls_conf.get("reality", {}).get("enabled") else "tls"
+                            node["sni"] = tls_conf.get("server_name")
+                            if node["security"] == "reality":
+                                ry = tls_conf.get("reality", {})
+                                node["reality"] = {
+                                    "pbk": ry.get("public_key"),
+                                    "sid": ry.get("short_id"),
+                                    "fp": tls_conf.get("utls", {}).get("fingerprint", "chrome")
+                                }
+                        
+                        # 处理 Xray 标准 outbounds 格式 (settings 嵌套)
+                        if out.get("settings") and "vnext" in out["settings"]:
+                            vnext = out["settings"]["vnext"][0]
+                            node["server"] = vnext["address"]
+                            node["port"] = vnext["port"]
+                            node["uuid"] = vnext["users"][0]["id"]
+                            
+                        nodes.append(node)
+
+            # --- 识别单节点 JSON 格式 ---
+            elif data.get("proxy") and "https://" in data.get("proxy"):
+                m = re.search(r'https://(.*):(.*)@(.*):(\d+)', data.get("proxy"))
+                if m: nodes.append({"name":"Naive","type":"socks5","server":m.group(3),"port":int(m.group(4)),"username":m.group(1),"password":m.group(2),"tls":True})
+            elif data.get("auth") or data.get("congestion_control"):
+                m = re.search(r'([\d\.]+):(\d+)', data.get("server", ""))
+                if m:
+                    t = "hysteria2" if data.get("auth") else "juicity"
+                    nodes.append({"name":t.capitalize(),"type":t,"server":m.group(1),"port":int(m.group(2)),"password":data.get("auth"),"uuid":data.get("uuid"),"sni":data.get("sni")})
+            elif 'proxies' in data:
+                nodes = data.get('proxies', [])
+
+    except Exception as e: print(f"ERROR: {url} 失败: {e}")
     return nodes
 
 def process_node(proxy):
     srv, prt = proxy.get('server'), proxy.get('port')
     if not srv or not prt: return None
     delay, ip = get_tcp_delay(srv, prt)
-    
     if delay is None:
         if FILTER_DEAD_NODES: return None
-        delay = 0
-        ip = srv 
-
+        delay, ip = 0, srv 
     loc = get_location(ip) if delay > 0 else "未知"
     now = datetime.now(BEIJING_TZ).strftime("%H:%M")
-    
-    tls_types = ['vless', 'trojan', 'vmess', 'hysteria2', 'juicity']
-    if proxy.get('type') in tls_types:
-        proxy['client-fingerprint'] = 'chrome'
-        proxy['tls-fragment'] = "10-30,5-10"
-        proxy['tfo'] = True
-    
+    proxy['client-fingerprint'] = 'chrome'
+    proxy['tfo'] = True
     p_t = proxy.get('type', 'proxy').upper()
     proxy['_geo'] = loc
     proxy['name'] = f"[{loc}] {p_t}_{srv} [{delay}ms] ({now})"
@@ -132,42 +167,26 @@ if __name__ == "__main__":
     if os.path.exists(SOURCE_FILE):
         with open(SOURCE_FILE, 'r', encoding='utf-8') as f:
             urls = re.findall(r'https?://[^\s\'"\[\],]+', f.read())
-    
     unique_proxies = {}
     for url in urls:
         for node in parse_remote(url.strip()):
             s, p, t = node.get('server'), node.get('port'), node.get('type')
             if s and p and t:
-                try:
-                    key = (str(s).lower(), int(p), str(t).lower())
-                    if key not in unique_proxies: unique_proxies[key] = node
-                except: continue
-
-    print(f"INFO: 去重后 {len(unique_proxies)} 个，开始处理...")
+                key = (str(s).lower(), int(p), str(t).lower())
+                if key not in unique_proxies: unique_proxies[key] = node
     with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
         final_nodes = [r for r in executor.map(process_node, list(unique_proxies.values())) if r]
-
     if os.path.exists(TEMPLATE_FILE):
         with open(TEMPLATE_FILE, 'r', encoding='utf-8') as f:
             tpl = yaml.safe_load(f)
         tpl['proxies'] = final_nodes
-        shards = {"香港":"🇭🇰 香港节点","美国":"🇺🇸 美国节点","日本":"🇯🇵 日本节点","新加坡":"🇸🇬 新加坡节点"}
         all_n = [n['name'] for n in final_nodes]
         for g in tpl.get('proxy-groups', []):
             if g['name'] in ['🚀 节点选择', '⚡ 自动选择']:
                 g['proxies'] = all_n if g['name'] == '⚡ 自动选择' else g['proxies'] + all_n
-            for reg, target in shards.items():
-                if g['name'] == target:
-                    g['proxies'] = [n['name'] for n in final_nodes if reg in n['_geo']]
-            if g['name'] == '🌍 剩余地区':
-                g['proxies'] = [n['name'] for n in final_nodes if not any(r in n['_geo'] for r in shards.keys())]
         with open(f"{OUTPUT_DIR}/clash_config.yaml", 'w', encoding='utf-8') as f:
             yaml.dump(tpl, f, sort_keys=False, allow_unicode=True)
-
     links = [to_link(n) for n in final_nodes if to_link(n)]
     with open(f"{OUTPUT_DIR}/node_links.txt", 'w', encoding='utf-8') as f:
         f.write("\n".join(links))
-    b64_str = base64.b64encode("\n".join(links).encode()).decode()
-    with open(f"{OUTPUT_DIR}/subscribe_base64.txt", 'w', encoding='utf-8') as f:
-        f.write(b64_str)
-    print(f"🎉 完成! 最终导出: {len(final_nodes)}")
+    print(f"🎉 任务结束! 共解析: {len(final_nodes)} 个节点")
