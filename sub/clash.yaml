@@ -1,151 +1,101 @@
-port: 7890
-socks-port: 7891
-mixed-port: 7893
-allow-interface-control: false
-mode: rule
-log-level: info
-ipv6: false
-external-controller: 127.0.0.1:9090
-dns:
-  enable: true
-  ipv6: false
-  listen: 0.0.0.0:53
-  enhanced-mode: fake-ip
-  fake-ip-range: 198.18.0.1/16
-  nameserver:
-  - 119.29.29.29
-  - 223.5.5.5
-  fallback:
-  - 8.8.8.8
-  - 1.1.1.1
 proxies:
-- name: HYSTERIA2_157.254.223.43
+- name: HYSTERIA2_5.178.101.33_23008
   type: hysteria2
-  server: 157.254.223.43
-  port: 27921
+  server: 5.178.101.33
+  port: 23008
+  sni: apple.com
+  skip-cert-verify: true
   password: dongtaiwang.com
-  uuid: null
+- name: VLESS_195.154.200.13_17401
+  type: vless
+  server: 195.154.200.13
+  port: 17401
   sni: null
   skip-cert-verify: true
-- name: VLESS_157.254.223.48
-  type: vless
-  server: 157.254.223.48
-  port: 45889
-  password: null
-  uuid: dongtaiwang.com
-  sni: us3.193919.xyz
+  uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
+  reality-opts:
+    public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
+    short-id: 8ef4455ba637425b
+  network: tcp
+- name: HYSTERIA2_ipv4.758733.xyz_20001
+  type: hysteria2
+  server: ipv4.758733.xyz
+  port: 20001
+  sni: apple.com
   skip-cert-verify: true
-- name: VLESS_157.254.223.44
+  password: dongtaiwang.com
+- name: HYSTERIA2_2001:bc8:32d7:402::3_20001
+  type: hysteria2
+  server: 2001:bc8:32d7:402::3
+  port: 20001
+  sni: apple.com
+  skip-cert-verify: true
+  password: dongtaiwang.com
+- name: HYSTERIA2_2001:bc8:32d7:402::4_20001
+  type: hysteria2
+  server: 2001:bc8:32d7:402::4
+  port: 20001
+  sni: apple.com
+  skip-cert-verify: true
+  password: dongtaiwang.com
+- name: VLESS_2001:bc8:32d7:181::2_17401
+  type: vless
+  server: 2001:bc8:32d7:181::2
+  port: 17401
+  sni: null
+  skip-cert-verify: true
+  uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
+  reality-opts:
+    public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
+    short-id: 8ef4455ba637425b
+  network: tcp
+- name: VLESS_2001:bc8:32d7:181::3_17401
+  type: vless
+  server: 2001:bc8:32d7:181::3
+  port: 17401
+  sni: null
+  skip-cert-verify: true
+  uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
+  reality-opts:
+    public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
+    short-id: 8ef4455ba637425b
+  network: tcp
+- name: VLESS_157.254.223.44_18959
   type: vless
   server: 157.254.223.44
   port: 18959
-  password: null
-  uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
   sni: null
   skip-cert-verify: true
-  reality:
-    pbk: -hwVEdgFkvjku8ESuDoAA7id5yGGv_zXBvBW_RdhmHA
-    sid: d557c6895d014075
+  uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
+  reality-opts:
+    public-key: -hwVEdgFkvjku8ESuDoAA7id5yGGv_zXBvBW_RdhmHA
+    short-id: d557c6895d014075
+  network: tcp
+- name: HYSTERIA2_157.254.223.43_27921
+  type: hysteria2
+  server: 157.254.223.43
+  port: 27921
+  sni: null
+  skip-cert-verify: true
+  password: dongtaiwang.com
+- name: VLESS_157.254.223.48_45889
+  type: vless
+  server: 157.254.223.48
+  port: 45889
+  sni: us3.193919.xyz
+  skip-cert-verify: true
+  uuid: dongtaiwang.com
 proxy-groups:
-- name: 🚀 节点选择
+- name: PROXY
   type: select
   proxies:
-  - ⚡ 自动选择
-  - 🇭🇰 香港节点
-  - 🇺🇸 美国节点
-  - 🇯🇵 日本节点
-  - 🇸🇬 新加坡节点
-  - 🌍 剩余地区
-  - DIRECT
-  - HYSTERIA2_157.254.223.43
-  - VLESS_157.254.223.48
-  - VLESS_157.254.223.44
-- name: 📺 国际流媒体
-  type: select
-  proxies:
-  - 🚀 节点选择
-  - 🇭🇰 香港节点
-  - 🇺🇸 美国节点
-  - 🇯🇵 日本节点
-  - 🇸🇬 新加坡节点
-  - DIRECT
-  - HYSTERIA2_157.254.223.43
-  - VLESS_157.254.223.48
-  - VLESS_157.254.223.44
-- name: 📲 电报消息
-  type: select
-  proxies:
-  - 🚀 节点选择
-  - 🇸🇬 新加坡节点
-  - DIRECT
-  - HYSTERIA2_157.254.223.43
-  - VLESS_157.254.223.48
-  - VLESS_157.254.223.44
-- name: Ⓜ️ 微软服务
-  type: select
-  proxies:
-  - DIRECT
-  - 🚀 节点选择
-  - HYSTERIA2_157.254.223.43
-  - VLESS_157.254.223.48
-  - VLESS_157.254.223.44
-- name: 🍎 苹果服务
-  type: select
-  proxies:
-  - DIRECT
-  - 🚀 节点选择
-  - HYSTERIA2_157.254.223.43
-  - VLESS_157.254.223.48
-  - VLESS_157.254.223.44
-- name: ⚡ 自动选择
-  type: url-test
-  url: http://www.gstatic.com/generate_204
-  interval: 300
-  tolerance: 50
-  proxies:
-  - HYSTERIA2_157.254.223.43
-  - VLESS_157.254.223.48
-  - VLESS_157.254.223.44
-- name: 🇭🇰 香港节点
-  type: select
-  proxies:
-  - HYSTERIA2_157.254.223.43
-  - VLESS_157.254.223.48
-  - VLESS_157.254.223.44
-- name: 🇺🇸 美国节点
-  type: select
-  proxies:
-  - HYSTERIA2_157.254.223.43
-  - VLESS_157.254.223.48
-  - VLESS_157.254.223.44
-- name: 🇯🇵 日本节点
-  type: select
-  proxies:
-  - HYSTERIA2_157.254.223.43
-  - VLESS_157.254.223.48
-  - VLESS_157.254.223.44
-- name: 🇸🇬 新加坡节点
-  type: select
-  proxies:
-  - HYSTERIA2_157.254.223.43
-  - VLESS_157.254.223.48
-  - VLESS_157.254.223.44
-- name: 🌍 剩余地区
-  type: select
-  proxies:
-  - HYSTERIA2_157.254.223.43
-  - VLESS_157.254.223.48
-  - VLESS_157.254.223.44
-rules:
-- DOMAIN-KEYWORD,adserver,REJECT
-- DOMAIN-SUFFIX,googleadservices.com,REJECT
-- DOMAIN-SUFFIX,netflix.com,📺 国际流媒体
-- DOMAIN-SUFFIX,netflix.net,📺 国际流媒体
-- DOMAIN-SUFFIX,youtube.com,📺 国际流媒体
-- DOMAIN-SUFFIX,googlevideo.com,📺 国际流媒体
-- DOMAIN-SUFFIX,telegram.org,📲 电报消息
-- IP-CIDR,91.108.4.0/22,📲 电报消息,no-resolve
-- DOMAIN-SUFFIX,microsoft.com,Ⓜ️ 微软服务
-- DOMAIN-SUFFIX,apple.com,🍎 苹果服务
-- GEOIP,CN,DIRECT
-- MATCH,🚀 节点选择
+  - HYSTERIA2_5.178.101.33_23008
+  - VLESS_195.154.200.13_17401
+  - HYSTERIA2_ipv4.758733.xyz_20001
+  - HYSTERIA2_2001:bc8:32d7:402::3_20001
+  - HYSTERIA2_2001:bc8:32d7:402::4_20001
+  - VLESS_2001:bc8:32d7:181::2_17401
+  - VLESS_2001:bc8:32d7:181::3_17401
+  - VLESS_157.254.223.44_18959
+  - HYSTERIA2_157.254.223.43_27921
+  - VLESS_157.254.223.48_45889
