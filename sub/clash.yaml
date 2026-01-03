@@ -1,68 +1,66 @@
 proxies:
 - name: 01_HYSTERIA2_43
+  type: hysteria2
   server: 157.254.223.43
   port: 27921
-  skip-cert-verify: true
-  type: hysteria2
   password: dongtaiwang.com
   sni: apple.com
+  skip-cert-verify: true
 - name: 02_HYSTERIA2_146
+  type: hysteria2
   server: 62.210.124.146
   port: 22000
-  skip-cert-verify: true
-  type: hysteria2
   password: dongtaiwang.com
   sni: www.microsoft.com
+  skip-cert-verify: true
 - name: 03_HYSTERIA2_63
+  type: hysteria2
   server: 51.158.194.63
   port: 32952
-  skip-cert-verify: true
-  type: hysteria2
   password: dongtaiwang.com
   sni: www.microsoft.com
+  skip-cert-verify: true
 - name: 04_NAIVE_xyz
+  type: http
   server: us.193919.xyz
   port: 44000
-  skip-cert-verify: true
-  type: http
   username: dongtaiwang.com
   password: dongtaiwang.com
   tls: true
   sni: us.193919.xyz
-  proxy-octet-stream: true
+  skip-cert-verify: true
 - name: 05_NAIVE_xyz
+  type: http
   server: naive1.336892.xyz
   port: 22338
-  skip-cert-verify: true
-  type: http
   username: dongtaiwang.com
   password: dongtaiwang.com
   tls: true
   sni: naive1.336892.xyz
-  proxy-octet-stream: true
+  skip-cert-verify: true
 - name: 06_VLESS_44
+  type: vless
   server: 157.254.223.44
   port: 18959
-  skip-cert-verify: true
-  type: vless
   uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
   udp: true
-  network: tcp
   tls: true
+  skip-cert-verify: true
+  network: tcp
   servername: itunes.apple.com
   client-fingerprint: chrome
   reality-opts:
     public-key: -hwVEdgFkvjku8ESuDoAA7id5yGGv_zXBvBW_RdhmHA
     short-id: d557c6895d014075
 - name: 07_VLESS_232
+  type: vless
   server: 89.144.35.232
   port: 15531
-  skip-cert-verify: true
-  type: vless
   uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
   udp: true
-  network: tcp
   tls: true
+  skip-cert-verify: true
+  network: tcp
   servername: itunes.apple.com
   client-fingerprint: chrome
   reality-opts:
