@@ -1,9 +1,3 @@
-# ==========================================================
-# Clash Meta (Mihomo) 增强型模板
-# 功能：神机规则 + 自动分片 + TLS 分片适配
-# ==========================================================
-
-# 基础配置
 port: 7890
 socks-port: 7891
 mixed-port: 7893
@@ -13,7 +7,6 @@ log-level: info
 ipv6: false
 external-controller: 127.0.0.1:9090
 
-# DNS 配置 (针对分流优化)
 dns:
   enable: true
   ipv6: false
@@ -27,12 +20,9 @@ dns:
     - 8.8.8.8
     - 1.1.1.1
 
-# 节点注入点 (脚本会自动填充此处)
 proxies: []
 
-# 策略组设计 (神机规则逻辑)
 proxy-groups:
-  # 1. 核心分流控制
   - name: 🚀 节点选择
     type: select
     proxies:
@@ -73,7 +63,6 @@ proxy-groups:
       - DIRECT
       - 🚀 节点选择
 
-  # 2. 自动化分片池 (脚本会按地理位置自动分发)
   - name: ⚡ 自动选择
     type: url-test
     url: http://www.gstatic.com/generate_204
@@ -101,16 +90,16 @@ proxy-groups:
     type: select
     proxies: []
 
-# 3. 神机规则分流逻辑 (基于 Domain / IP-CIDR)
 rules:
-  # 拦截广告 (使用神机规则常用的拦截列表)
   - DOMAIN-KEYWORD,adserver,REJECT
   - DOMAIN-SUFFIX,googleadservices.com,REJECT
-  - DOMAIN-SUFFIX,doubleclick.net,REJECT
-
-  # 国际流媒体 (Netflix / YouTube / Disney+)
   - DOMAIN-SUFFIX,netflix.com,📺 国际流媒体
   - DOMAIN-SUFFIX,netflix.net,📺 国际流媒体
-  - DOMAIN-SUFFIX,nflximg.net,📺 国际流媒体
-  - DOMAIN-SUFFIX,googlevideo.com,📺 国际流媒体
   - DOMAIN-SUFFIX,youtube.com,📺 国际流媒体
+  - DOMAIN-SUFFIX,googlevideo.com,📺 国际流媒体
+  - DOMAIN-SUFFIX,telegram.org,📲 电报消息
+  - IP-CIDR,91.108.4.0/22,📲 电报消息,no-resolve
+  - DOMAIN-SUFFIX,microsoft.com,Ⓜ️ 微软服务
+  - DOMAIN-SUFFIX,apple.com,🍎 苹果服务
+  - GEOIP,CN,DIRECT
+  - MATCH,🚀 节点选择
