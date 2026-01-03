@@ -61,8 +61,6 @@ proxies:
   reality-opts:
     public-key: BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic
     short-id: ea22dff3025e4ff8
-  xhttp-opts:
-    path: /github.com/Alvin9999
 - name: 08_VLESS_230
   server: 89.144.35.230
   port: 54582
@@ -77,8 +75,6 @@ proxies:
   reality-opts:
     public-key: kfw5DgkyKiovC3dzb-o2PUYnZPnbYvbx2IwERUv9czY
     short-id: 225e2cc8
-  xhttp-opts:
-    path: 5cfc52bc-e701-4160-89df-930a0c040576-xh
 - name: 09_VLESS_2001:bc8:32d7:14f::6
   server: 2001:bc8:32d7:14f::6
   port: 60011
@@ -93,8 +89,6 @@ proxies:
   reality-opts:
     public-key: BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic
     short-id: ea22dff3025e4ff8
-  xhttp-opts:
-    path: /github.com/Alvin9999
 - name: 10_VLESS_44
   server: 157.254.223.44
   port: 18959
@@ -103,6 +97,12 @@ proxies:
   uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
   udp: true
   network: tcp
+  tls: true
+  servername: itunes.apple.com
+  client-fingerprint: chrome
+  reality-opts:
+    public-key: -hwVEdgFkvjku8ESuDoAA7id5yGGv_zXBvBW_RdhmHA
+    short-id: d557c6895d014075
 - name: 11_VLESS_232
   server: 89.144.35.232
   port: 15531
@@ -111,6 +111,12 @@ proxies:
   uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
   udp: true
   network: tcp
+  tls: true
+  servername: itunes.apple.com
+  client-fingerprint: chrome
+  reality-opts:
+    public-key: o4gXQf1n5YOoLo6OnyHykodK1ZShHvDqu1FgxNHe6n8
+    short-id: 8346964417a2552b
 proxy-groups:
 - name: 🚀 节点选择
   type: select
