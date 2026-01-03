@@ -27,7 +27,27 @@ proxies:
   type: hysteria2
   password: dongtaiwang.com
   sni: us3.193919.xyz
-- name: 05_VLESS_177
+- name: 05_NAIVE_xyz
+  server: us.193919.xyz
+  port: 44000
+  skip-cert-verify: true
+  type: http
+  username: dongtaiwang.com
+  password: dongtaiwang.com
+  tls: true
+  sni: us.193919.xyz
+  proxy-octet-stream: true
+- name: 06_NAIVE_xyz
+  server: naive1.336892.xyz
+  port: 22338
+  skip-cert-verify: true
+  type: http
+  username: dongtaiwang.com
+  password: dongtaiwang.com
+  tls: true
+  sni: naive1.336892.xyz
+  proxy-octet-stream: true
+- name: 07_VLESS_177
   server: 62.210.127.177
   port: 60011
   skip-cert-verify: true
@@ -41,7 +61,7 @@ proxies:
   reality-opts:
     public-key: BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic
     short-id: ea22dff3025e4ff8
-- name: 06_VLESS_230
+- name: 08_VLESS_230
   server: 89.144.35.230
   port: 54582
   skip-cert-verify: true
@@ -55,7 +75,7 @@ proxies:
   reality-opts:
     public-key: kfw5DgkyKiovC3dzb-o2PUYnZPnbYvbx2IwERUv9czY
     short-id: 225e2cc8
-- name: 07_VLESS_2001:bc8:32d7:14f::6
+- name: 09_VLESS_2001:bc8:32d7:14f::6
   server: 2001:bc8:32d7:14f::6
   port: 60011
   skip-cert-verify: true
@@ -69,7 +89,7 @@ proxies:
   reality-opts:
     public-key: BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic
     short-id: ea22dff3025e4ff8
-- name: 08_VLESS_44
+- name: 10_VLESS_44
   server: 157.254.223.44
   port: 18959
   skip-cert-verify: true
@@ -80,7 +100,7 @@ proxies:
   servername: itunes.apple.com
   network: tcp
   client-fingerprint: chrome
-- name: 09_VLESS_232
+- name: 11_VLESS_232
   server: 89.144.35.232
   port: 15531
   skip-cert-verify: true
@@ -100,11 +120,13 @@ proxy-groups:
   - 02_HYSTERIA2_146
   - 03_HYSTERIA2_63
   - 04_HYSTERIA2_48
-  - 05_VLESS_177
-  - 06_VLESS_230
-  - 07_VLESS_2001:bc8:32d7:14f::6
-  - 08_VLESS_44
-  - 09_VLESS_232
+  - 05_NAIVE_xyz
+  - 06_NAIVE_xyz
+  - 07_VLESS_177
+  - 08_VLESS_230
+  - 09_VLESS_2001:bc8:32d7:14f::6
+  - 10_VLESS_44
+  - 11_VLESS_232
   - DIRECT
 - name: ⚡ 自动选择
   type: url-test
@@ -113,11 +135,13 @@ proxy-groups:
   - 02_HYSTERIA2_146
   - 03_HYSTERIA2_63
   - 04_HYSTERIA2_48
-  - 05_VLESS_177
-  - 06_VLESS_230
-  - 07_VLESS_2001:bc8:32d7:14f::6
-  - 08_VLESS_44
-  - 09_VLESS_232
+  - 05_NAIVE_xyz
+  - 06_NAIVE_xyz
+  - 07_VLESS_177
+  - 08_VLESS_230
+  - 09_VLESS_2001:bc8:32d7:14f::6
+  - 10_VLESS_44
+  - 11_VLESS_232
   url: http://www.gstatic.com/generate_204
   interval: 300
 - name: 🌍 全球直连
