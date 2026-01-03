@@ -2,8 +2,10 @@ hysteria2://dongtaiwang.com@157.254.223.43:27921?sni=www.apple.com&insecure=1#�
 hysteria2://dongtaiwang.com@62.210.124.146:22000?sni=www.apple.com&insecure=1#🌐 HYSTERIA2_2_4.146
 hysteria2://dongtaiwang.com@51.158.194.63:32952?sni=www.apple.com&insecure=1#🌐 HYSTERIA2_3_94.63
 hysteria2://dongtaiwang.com@157.254.223.48:45889?sni=us3.193919.xyz&insecure=1#🌐 HYSTERIA2_4_23.48
-vless://a1f699e4-d7b7-4cdc-8414-1105e08fe4c5@62.210.127.177:60011?encryption=none&security=reality&sni=www.pixiv.co.jp&fp=chrome&pbk=BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic&sid=ea22dff3025e4ff8&type=xhttp#🌐 VLESS_9_7.177
-vless://5cfc52bc-e701-4160-89df-930a0c040576@89.144.35.230:54582?encryption=none&security=reality&sni=apple.com&fp=chrome&pbk=kfw5DgkyKiovC3dzb-o2PUYnZPnbYvbx2IwERUv9czY&sid=225e2cc8&type=xhttp#🌐 VLESS_10_5.230
-vless://a1f699e4-d7b7-4cdc-8414-1105e08fe4c5@2001:bc8:32d7:14f::6:60011?encryption=none&security=reality&sni=www.pixiv.co.jp&fp=chrome&pbk=BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic&sid=ea22dff3025e4ff8&type=xhttp#🌐 VLESS_11_4f::6
-vless://d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa@157.254.223.44:18959?encryption=none&security=reality&sni=www.apple.com&fp=chrome&pbk=None&sid=None&type=tcp#🌐 VLESS_12_23.44
-vless://d3fd3b3c-f8d4-4894-b91e-5a6a53923a95@89.144.35.232:15531?encryption=none&security=reality&sni=www.apple.com&fp=chrome&pbk=None&sid=None&type=tcp#🌐 VLESS_13_5.232
+shadowquic://dongtaiwang.com:dongtaiwang.com@157.254.223.43:1443?sni=www.yahoo.com#🌐 SHADOWQUIC_9_23.43
+shadowquic://dongtaiwang.com:dongtaiwang.com@fan2.394615.xyz:1443?sni=www.yahoo.com#🌐 SHADOWQUIC_10_5.xyz
+vless://a1f699e4-d7b7-4cdc-8414-1105e08fe4c5@62.210.127.177:60011?encryption=none&security=reality&sni=www.pixiv.co.jp&fp=chrome&pbk=BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic&sid=ea22dff3025e4ff8&type=xhttp#🌐 VLESS_11_7.177
+vless://5cfc52bc-e701-4160-89df-930a0c040576@89.144.35.230:54582?encryption=none&security=reality&sni=apple.com&fp=chrome&pbk=kfw5DgkyKiovC3dzb-o2PUYnZPnbYvbx2IwERUv9czY&sid=225e2cc8&type=xhttp#🌐 VLESS_12_5.230
+vless://a1f699e4-d7b7-4cdc-8414-1105e08fe4c5@2001:bc8:32d7:14f::6:60011?encryption=none&security=reality&sni=www.pixiv.co.jp&fp=chrome&pbk=BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic&sid=ea22dff3025e4ff8&type=xhttp#🌐 VLESS_13_4f::6
+vless://d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa@157.254.223.44:18959?encryption=none&security=reality&sni=www.apple.com&fp=chrome&pbk=None&sid=None&type=tcp#🌐 VLESS_14_23.44
+vless://d3fd3b3c-f8d4-4894-b91e-5a6a53923a95@89.144.35.232:15531?encryption=none&security=reality&sni=www.apple.com&fp=chrome&pbk=None&sid=None&type=tcp#🌐 VLESS_15_5.232
