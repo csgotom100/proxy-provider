@@ -1,12 +1,4 @@
-import json
-import urllib.request
-import base64
-import yaml
-import os
-import ssl
-import warnings
-import re
-import time
+import json, urllib.request, yaml, os, ssl, warnings, re
 
 warnings.filterwarnings("ignore")
 
@@ -44,46 +36,30 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 ctx = ssl._create_unverified_context()
 
 def get_node_info(item):
-    """极致宽容解析：只要有IP、端口、密钥就是好节点"""
     try:
         if not isinstance(item, dict): return None
-        # 1. 找服务器
-        srv = item.get('server') or item.get('add') or item.get('address') or item.get('host')
+        srv = item.get('server') or item.get('add') or item.get('address')
         if not srv or str(srv).startswith('127.'): return None
-        
-        # 2. 找端口
         port = item.get('port') or item.get('server_port') or item.get('port_num')
-        if not port and ':' in str(srv):
-            srv, port = str(srv).rsplit(':', 1)
-        
-        # 3. 找密钥
+        if not port and ':' in str(srv): srv, port = str(srv).rsplit(':', 1)
         pwd = item.get('password') or item.get('uuid') or item.get('id') or item.get('auth')
         if not srv or not port or not pwd: return None
 
-        # 清洗数据
         srv = str(srv).replace('[','').replace(']','')
-        port = int(str(port).split(',')[0].split('-')[0].strip())
-        
-        # 协议识别
+        port = int(str(port).split(',')[0].strip())
         t = str(item.get('type', '')).lower()
         if 'hy2' in t or 'hysteria2' in t or 'auth' in item: ntype = 'hysteria2'
         elif 'vless' in t or 'uuid' in item: ntype = 'vless'
-        elif 'vmess' in t: ntype = 'vmess'
-        elif 'ss' in t or 'shadowsocks' in t: ntype = 'ss'
         else: ntype = 'vless'
 
-        # 特色参数提取
         tls_obj = item.get('tls', {}) if isinstance(item.get('tls'), dict) else {}
         sni = item.get('sni') or item.get('servername') or tls_obj.get('server_name') or ""
         
         node = {"server": srv, "port": port, "type": ntype, "secret": str(pwd), "sni": sni}
-        
-        # Reality 处理
         ry = item.get('reality-opts') or item.get('reality') or tls_obj.get('reality') or {}
         if isinstance(ry, dict) and (ry.get('public-key') or ry.get('publicKey')):
             node["pbk"] = ry.get('public-key') or ry.get('publicKey')
             node["sid"] = ry.get('short-id') or ry.get('shortId') or ""
-            
         return node
     except: return None
 
@@ -98,64 +74,39 @@ def extract_dicts(obj):
 
 def main():
     all_nodes = []
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-    
-    # 合并订阅源
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     target_urls = FIXED_SOURCES.copy()
     if os.path.exists(MANUAL_FILE):
         with open(MANUAL_FILE, 'r', encoding='utf-8') as f:
             target_urls.extend(re.findall(r'https?://[^\s\'"\[\],]+', f.read()))
     
-    target_urls = list(set(target_urls))
-    print(f"📡 正在扫描 {len(target_urls)} 个源...")
-
-    for url in target_urls:
+    for url in list(set(target_urls)):
         try:
             req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
-                raw_text = resp.read().decode('utf-8', errors='ignore')
-                count_before = len(all_nodes)
-                
-                # 尝试结构化解析
-                try:
-                    data = json.loads(raw_text) if raw_text.startswith(('{','[')) else yaml.safe_load(raw_text)
-                    for d in extract_dicts(data):
-                        node = get_node_info(d)
-                        if node: all_nodes.append(node)
-                except: pass
-                
-                # 尝试 Base64 暴力解码及正则提取 (兜底)
-                if len(all_nodes) == count_before:
-                    try:
-                        decoded = base64.b64decode(raw_text).decode('utf-8', errors='ignore')
-                        # 这里简单识别 vless:// 链接中的关键信息并模拟成字典
-                        links = re.findall(r'vless://([^@]+)@([^:]+):(\d+)', decoded + raw_text)
-                        for l in links:
-                            all_nodes.append({"type":"vless","secret":l[0],"server":l[1],"port":int(l[2]),"sni":""})
-                    except: pass
-                
-                print(f"成功从 {url[:40]}... 提取了 {len(all_nodes) - count_before} 个节点")
+            with urllib.request.urlopen(req, timeout=10, context=ctx) as resp:
+                raw = resp.read().decode('utf-8', errors='ignore')
+                data = json.loads(raw) if raw.startswith(('{','[')) else yaml.safe_load(raw)
+                for d in extract_dicts(data):
+                    node = get_node_info(d)
+                    if node: all_nodes.append(node)
         except: continue
 
-    # 去重
     unique_list = []
     seen = set()
     for n in all_nodes:
         key = (n['server'], n['port'], n['secret'])
-        if key not in seen:
-            unique_list.append(n)
-            seen.add(key)
+        if key not in seen: unique_list.append(n); seen.add(key)
 
-    # 构造 Clash 格式
     proxies = []
     for i, n in enumerate(unique_list):
-        name = f"{n['type'].upper()}_{str(n['server'])[-4:]}_{i+1}"
+        # 更加直观的命名方式：协议 + IP后两位
+        suffix = n['server'].split('.')[-1] if '.' in n['server'] else 'v6'
+        name = f"{n['type'].upper()}_{suffix}_{i+1}"
         p = {"name": name, "type": n['type'], "server": n['server'], "port": n['port'], "skip-cert-verify": True}
-        
         if n['type'] == 'hysteria2':
             p["password"] = n['secret']
             p["sni"] = n['sni']
-        elif n['type'] in ['vless', 'vmess']:
+        else:
             p["uuid"] = n['secret']
             p["tls"] = True
             p["servername"] = n['sni']
@@ -164,17 +115,27 @@ def main():
                 p["network"] = "tcp"
         proxies.append(p)
 
-    # 写入文件
+    # 增强的分组逻辑
+    p_names = [x['name'] for x in proxies]
     conf = {
         "proxies": proxies,
-        "proxy-groups": [{"name": "PROXY", "type": "select", "proxies": [x['name'] for x in proxies]}],
-        "rules": ["MATCH,PROXY"]
+        "proxy-groups": [
+            {"name": "🚀 自动测速", "type": "url-test", "proxies": p_names, "url": "http://www.gstatic.com/generate_204", "interval": 300},
+            {"name": "🔰 手动切换", "type": "select", "proxies": ["🚀 自动测速"] + p_names},
+            {"name": "🎯 全球直连", "type": "select", "proxies": ["DIRECT", "🔰 手动切换"]}
+        ],
+        "rules": [
+            "DOMAIN-SUFFIX,google.com,🔰 手动切换",
+            "DOMAIN-KEYWORD,youtube,🔰 手动切换",
+            "DOMAIN-KEYWORD,github,🔰 手动切换",
+            "GEOIP,CN,🎯 全球直连",
+            "MATCH,🔰 手动切换"
+        ]
     }
     
     with open(f"{OUTPUT_DIR}/clash.yaml", 'w', encoding='utf-8') as f:
         yaml.dump(conf, f, allow_unicode=True, sort_keys=False)
-    
-    print(f"🏁 任务完成！共计有效节点: {len(proxies)}")
+    print(f"🏁 抓取完成，有效节点数: {len(proxies)}")
 
 if __name__ == "__main__":
     main()
