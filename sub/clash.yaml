@@ -1,5 +1,13 @@
 proxies:
-- name: 🏳️ NAIVE_xyz_1
+- name: 🇷🇴 VLESS_232_1
+  type: vless
+  server: 89.144.35.232
+  port: 15531
+  skip-cert-verify: true
+  uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
+  tls: true
+  servername: itunes.apple.com
+- name: 🏳️ NAIVE_xyz_2
   type: naive
   server: us.193919.xyz
   port: 44000
@@ -7,22 +15,37 @@ proxies:
   username: dongtaiwang.com
   password: dongtaiwang.com
   proxy-octet-stream: true
-- name: 🇷🇴 VLESS_232_2
+- name: 🇺🇸 VLESS_44_3
   type: vless
-  server: 89.144.35.232
-  port: 15531
+  server: 157.254.223.44
+  port: 18959
   skip-cert-verify: true
-  uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
+  uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
   tls: true
-  servername: ''
-- name: 🇫🇷 HYSTERIA2_146_3
+  servername: itunes.apple.com
+- name: 🇳🇱 HYSTERIA2_63_4
+  type: hysteria2
+  server: 51.158.194.63
+  port: 32952
+  skip-cert-verify: true
+  password: dongtaiwang.com
+  sni: ''
+- name: 🇺🇸 VLESS_48_5
+  type: vless
+  server: 157.254.223.48
+  port: 45889
+  skip-cert-verify: true
+  uuid: abbf6900-2bfb-4019-89e4-4875e831cea8
+  tls: true
+  servername: us3.193919.xyz
+- name: 🇫🇷 HYSTERIA2_146_6
   type: hysteria2
   server: 62.210.124.146
   port: 22000
   skip-cert-verify: true
   password: dongtaiwang.com
-  sni: 62.210.124.146
-- name: 🏳️ NAIVE_xyz_4
+  sni: ''
+- name: 🏳️ NAIVE_xyz_7
   type: naive
   server: naive1.336892.xyz
   port: 22338
@@ -30,54 +53,31 @@ proxies:
   username: dongtaiwang.com
   password: dongtaiwang.com
   proxy-octet-stream: true
-- name: 🇳🇱 HYSTERIA2_63_5
-  type: hysteria2
-  server: 51.158.194.63
-  port: 32952
-  skip-cert-verify: true
-  password: dongtaiwang.com
-  sni: 51.158.194.63
-- name: 🇺🇸 JUICITY_48_6
-  type: juicity
-  server: 157.254.223.48
-  port: 45889
-  skip-cert-verify: true
-  uuid: abbf6900-2bfb-4019-89e4-4875e831cea8
-  sni: us3.193919.xyz
-  conntrack: true
-- name: 🇺🇸 VLESS_44_7
-  type: vless
-  server: 157.254.223.44
-  port: 18959
-  skip-cert-verify: true
-  uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
-  tls: true
-  servername: ''
 proxy-groups:
 - name: 🚀 自动选择
   type: url-test
   proxies:
-  - 🏳️ NAIVE_xyz_1
-  - 🇷🇴 VLESS_232_2
-  - 🇫🇷 HYSTERIA2_146_3
-  - 🏳️ NAIVE_xyz_4
-  - 🇳🇱 HYSTERIA2_63_5
-  - 🇺🇸 JUICITY_48_6
-  - 🇺🇸 VLESS_44_7
+  - 🇷🇴 VLESS_232_1
+  - 🏳️ NAIVE_xyz_2
+  - 🇺🇸 VLESS_44_3
+  - 🇳🇱 HYSTERIA2_63_4
+  - 🇺🇸 VLESS_48_5
+  - 🇫🇷 HYSTERIA2_146_6
+  - 🏳️ NAIVE_xyz_7
   url: http://www.gstatic.com/generate_204
   interval: 300
 - name: 🔰 手动切换
   type: select
   proxies:
   - 🚀 自动选择
-  - 🏳️ NAIVE_xyz_1
-  - 🇷🇴 VLESS_232_2
-  - 🇫🇷 HYSTERIA2_146_3
-  - 🏳️ NAIVE_xyz_4
-  - 🇳🇱 HYSTERIA2_63_5
-  - 🇺🇸 JUICITY_48_6
-  - 🇺🇸 VLESS_44_7
-- name: '🕒 更新: 2026-01-03 22:05'
+  - 🇷🇴 VLESS_232_1
+  - 🏳️ NAIVE_xyz_2
+  - 🇺🇸 VLESS_44_3
+  - 🇳🇱 HYSTERIA2_63_4
+  - 🇺🇸 VLESS_48_5
+  - 🇫🇷 HYSTERIA2_146_6
+  - 🏳️ NAIVE_xyz_7
+- name: '🕒 更新: 2026-01-03 22:09'
   type: select
   proxies:
   - 🚀 自动选择
