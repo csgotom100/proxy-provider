@@ -1,67 +1,62 @@
-import json, urllib.request, yaml, os, ssl, warnings, re, base64, time
+import json, urllib.request, yaml, os, ssl, warnings, re, time
 from datetime import datetime, timedelta, timezone
 
 warnings.filterwarnings("ignore")
 
 OUT_DIR = './sub'
 MANUAL_FILE = './urls/manual_json.txt'
-# 保持兼容性，不加载导致报错的 naive
-SUPPORTED_TYPES = ['vless', 'hysteria2'] 
-
 os.makedirs(OUT_DIR, exist_ok=True)
 ctx = ssl._create_unverified_context()
 
-def get_geo(ip):
-    try:
-        clean_ip = ip.replace('[','').replace(']','')
-        if not re.match(r'^\d', clean_ip) and not ':' in clean_ip: return "🏳️"
-        url = f"http://ip-api.com/json/{clean_ip}?fields=countryCode"
-        with urllib.request.urlopen(url, timeout=3) as r:
-            code = json.loads(r.read().decode()).get('countryCode', 'UN')
-            return "".join(chr(ord(c) + 127397) for c in code.upper())
-    except: return "🏳️"
+# --- 🎯 样板处理器仓库 ---
 
-def parse_strict(d):
-    """多维度判定协议，确保不漏掉 HY2"""
-    try:
-        if not isinstance(d, dict): return None
-        
-        # 提取核心三要素
-        s = d.get('add') or d.get('server') or d.get('address')
-        p = d.get('port') or d.get('server_port') or d.get('listen_port')
-        u = d.get('auth') or d.get('password') or d.get('id') or d.get('uuid')
-        
-        if not (s and u): return None
-        
-        # 处理端口连写
-        s = str(s).replace('[','').replace(']','')
-        if ':' in s and not p:
-            s, p = s.rsplit(':', 1)
-        
-        if not p: return None
+class ProtocolHandlers:
+    @staticmethod
+    def vless_singbox(d):
+        """适配样板 1：VLESS Sing-box (Reality)"""
+        try:
+            tls = d.get('tls', {})
+            real = tls.get('reality', {})
+            return {
+                "s": d.get('server'),
+                "p": int(d.get('server_port')),
+                "u": d.get('uuid'),
+                "t": "vless",
+                "sn": tls.get('server_name', 'itunes.apple.com'),
+                "pbk": real.get('public_key'),
+                "sid": real.get('short_id')
+            }
+        except: return None
 
-        # --- 协议判定逻辑优化 ---
-        t_raw = str(d.get('type', '')).lower()
-        # 如果有 auth 字段，或者 type 包含 hy，则判定为 hysteria2
-        if 'auth' in d or 'hy' in t_raw or 'hysteria2' in t_raw:
-            t = 'hysteria2'
-        else:
-            t = 'vless'
+    @staticmethod
+    def hy2_native(d):
+        """适配样板 2：Hysteria2 Native (auth_str)"""
+        try:
+            s_raw = d.get('server', '')
+            # 处理 62.210.127.177:23880 连写格式
+            host, port = s_raw.rsplit(':', 1)
+            return {
+                "s": host.replace('[','').replace(']',''),
+                "p": int(port),
+                "u": d.get('auth_str'),
+                "t": "hysteria2",
+                "sn": d.get('server_name', 'bing.com')
+            }
+        except: return None
 
-        node = {"s": s, "p": int(p), "u": str(u), "t": t}
-        
-        # 提取 SNI
-        tls = d.get('tls', {}) if isinstance(d.get('tls'), dict) else {}
-        node["sn"] = d.get('sni') or d.get('servername') or d.get('peer') or tls.get('server_name') or ""
-        
-        # 提取 Reality (VLESS 关键)
-        ry = d.get('reality') or d.get('reality-opts') or tls.get('reality') or {}
-        if isinstance(ry, dict) and (ry.get('public-key') or ry.get('publicKey')):
-            node["pbk"] = ry.get('public-key') or ry.get('publicKey')
-            node["sid"] = ry.get('short-id') or ry.get('shortId') or ""
-            
-        return node
-    except: return None
+    @staticmethod
+    def naive_alvin(d):
+        """适配样板 3：NaiveProxy Alvin 专用字符串格式"""
+        if 'proxy' in d and 'https://' in str(d.get('proxy')):
+            m = re.search(r'https://([^:]+):([^@]+)@([^:]+):(\d+)', d.get('proxy'))
+            if m:
+                return {
+                    "s": m.group(3), "p": int(m.group(4)), "u": m.group(1),
+                    "pass": m.group(2), "t": "naive", "sn": m.group(3)
+                }
+        return None
+
+# --- 🛠️ 核心解析引擎 ---
 
 def find_dicts(obj):
     if isinstance(obj, dict):
@@ -75,64 +70,70 @@ def main():
     with open(MANUAL_FILE, 'r', encoding='utf-8') as f:
         urls = list(set(re.findall(r'https?://[^\s\'"\[\],]+', f.read())))
     
-    all_nodes = []
-    print(f"📂 正在扫描 {len(urls)} 个源地址...")
+    extracted_nodes = []
+    print(f"📂 开始精准解析 {len(urls)} 个源地址...")
 
     for url in urls:
+        # 协议路由探测
+        ptype = 'vless' if '/vless/' in url or '/xray/' in url else \
+                'hy2' if '/hysteria2/' in url or '/ipp/hy' in url else \
+                'naive' if '/naiveproxy/' in url else 'general'
+        
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=12, context=ctx) as resp:
                 text = resp.read().decode('utf-8', errors='ignore')
-                try: data = json.loads(text)
-                except: data = yaml.safe_load(text)
-                if data:
-                    for d in find_dicts(data):
-                        n = parse_strict(d)
-                        if n: all_nodes.append(n)
+                data = json.loads(text) if '{' in text else yaml.safe_load(text)
+                
+                for d in find_dicts(data):
+                    node = None
+                    if ptype == 'vless': node = ProtocolHandlers.vless_singbox(d)
+                    elif ptype == 'hy2': node = ProtocolHandlers.hy2_native(d)
+                    elif ptype == 'naive': node = ProtocolHandlers.naive_alvin(d)
+                    
+                    # 如果路由解析失败，尝试所有样板保底
+                    if not node:
+                        node = ProtocolHandlers.hy2_native(d) or \
+                               ProtocolHandlers.vless_singbox(d) or \
+                               ProtocolHandlers.naive_alvin(d)
+                    
+                    if node: extracted_nodes.append(node)
         except: continue
 
+    # 去重逻辑
     uniq, seen = [], set()
-    for n in all_nodes:
-        if n['t'] not in SUPPORTED_TYPES: continue
+    for n in extracted_nodes:
         k = (n['s'], n['p'], n['u'])
         if k not in seen: uniq.append(n); seen.add(k)
 
+    # 转换 Clash 格式
     clash_px = []
-    bj_time = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M")
-    
     for i, n in enumerate(uniq):
-        flag = get_geo(n['s'])
-        name = f"{flag} {n['t'].upper()}_{i+1}_{n['s'].split('.')[-1]}"
+        name = f"Node_{i+1}_{n['t'].upper()}_{n['s'].split('.')[-1]}"
         px = {"name": name, "type": n['t'], "server": n['s'], "port": n['p'], "skip-cert-verify": True}
         
         if n['t'] == 'hysteria2':
-            px.update({"password": n['u'], "sni": n['sn'] if n['sn'] else "www.bing.com"})
+            px.update({"password": n['u'], "sni": n['sn']})
         elif n['t'] == 'vless':
-            px.update({"uuid": n['u'], "tls": True, "servername": n['sn'] if n['sn'] else "itunes.apple.com"})
+            px.update({"uuid": n['u'], "tls": True, "servername": n['sn']})
             if n.get('pbk'):
-                px.update({
-                    "network": "tcp",
-                    "reality-opts": {"public-key": n['pbk'], "short-id": n['sid']},
-                    "tfo": True
-                })
-        
+                px.update({"network": "tcp", "reality-opts": {"public-key": n['pbk'], "short-id": n.get('sid','')}})
+        elif n['t'] == 'naive':
+            px.update({"username": n['u'], "password": n['pass'], "proxy-octet-stream": True})
+            
         clash_px.append(px)
-        if i % 15 == 0: time.sleep(0.5)
 
+    # 输出 YAML
     conf = {
         "proxies": clash_px,
-        "proxy-groups": [
-            {"name": "🚀 自动选择", "type": "url-test", "proxies": [p['name'] for p in clash_px], "url": "http://www.gstatic.com/generate_204", "interval": 300},
-            {"name": "🔰 手动切换", "type": "select", "proxies": ["🚀 自动选择"] + [p['name'] for p in clash_px]},
-            {"name": f"🕒 更新: {bj_time}", "type": "select", "proxies": ["🚀 自动选择"]}
-        ],
-        "rules": ["MATCH,🔰 手动切换"]
+        "proxy-groups": [{"name": "🚀 自动选择", "type": "url-test", "proxies": [p['name'] for p in clash_px], "url": "http://www.gstatic.com/generate_204", "interval": 300}],
+        "rules": ["MATCH,🚀 自动选择"]
     }
 
     with open(f"{OUT_DIR}/clash.yaml", 'w', encoding='utf-8') as f:
         yaml.dump(conf, f, allow_unicode=True, sort_keys=False)
     
-    print(f"✅ 成功！HY2 与 VLESS 已同步，节点总数: {len(clash_px)}")
+    print(f"✅ 精准汇总完成！节点数: {len(clash_px)}")
 
 if __name__ == "__main__":
     main()
