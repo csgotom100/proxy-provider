@@ -11,7 +11,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
-    # 必须开启写入权限，否则生成的订阅文件无法存回仓库
     permissions:
       contents: write
       
@@ -33,21 +32,22 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          # 配置 Git 机器人信息
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
-          # 确保 sub 文件夹被加入版本控制
-          git add sub/*
-          
-          # 获取北京时间用于提交信息
-          # GitHub Runner 默认是 UTC，通过 TZ=Asia/Shanghai 获取北京时间
-          BEIJING_TIME=$(TZ='Asia/Shanghai' date "+%Y-%m-%d %H:%M:%S")
-          
-          # 检查是否有文件更改，如果有则提交并推送到仓库
-          if git diff --staged --quiet; then
-            echo "没有发现节点变化，跳过提交。"
+          # 健壮性检查：只有当 sub 目录存在且不为空时才进行 git add
+          if [ -d "./sub" ] && [ "$(ls -A ./sub)" ]; then
+            git add sub/*
+            
+            BEIJING_TIME=$(TZ='Asia/Shanghai' date "+%Y-%m-%d %H:%M:%S")
+            
+            if git diff --staged --quiet; then
+              echo "没有发现节点内容变化，跳过提交。"
+            else
+              git commit -m "自动更新节点于北京时间: $BEIJING_TIME"
+              git push
+            fi
           else
-            git commit -m "自动更新节点于北京时间: $BEIJING_TIME"
-            git push
+            echo "错误：sub 目录为空或不存在，脚本可能未成功抓取到有效节点。"
+            exit 1
           fi
