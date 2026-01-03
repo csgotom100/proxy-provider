@@ -7,7 +7,15 @@ proxies:
   uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
   tls: true
   servername: itunes.apple.com
-- name: 🇫🇷 VLESS_13_2
+- name: 🇷🇴 VLESS_232_2
+  type: vless
+  server: 89.144.35.232
+  port: 15531
+  skip-cert-verify: true
+  uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
+  tls: true
+  servername: itunes.apple.com
+- name: 🇫🇷 VLESS_13_3
   type: vless
   server: 195.154.200.13
   port: 17401
@@ -19,56 +27,13 @@ proxies:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
   network: tcp
-- name: 🇷🇴 VLESS_232_3
-  type: vless
-  server: 89.144.35.232
-  port: 15531
-  skip-cert-verify: true
-  uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
-  tls: true
-  servername: itunes.apple.com
-- name: 🇫🇷 VLESS_2001:bc8:32d7:181::2_4
-  type: vless
-  server: 2001:bc8:32d7:181::2
-  port: 17401
-  skip-cert-verify: true
-  uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
-  tls: true
-  servername: itunes.apple.com
-  reality-opts:
-    public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
-    short-id: 8ef4455ba637425b
-  network: tcp
-- name: 🇫🇷 VLESS_2001:bc8:32d7:181::3_5
-  type: vless
-  server: 2001:bc8:32d7:181::3
-  port: 17401
-  skip-cert-verify: true
-  uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
-  tls: true
-  servername: itunes.apple.com
-  reality-opts:
-    public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
-    short-id: 8ef4455ba637425b
-  network: tcp
-- name: 🇹🇼 VLESS_14_6
-  type: vless
-  server: 45.221.98.14
-  port: 59901
-  skip-cert-verify: true
-  uuid: dongtaiwang.com
-  tls: true
-  servername: ''
 proxy-groups:
 - name: 🚀 自动选择
   type: url-test
   proxies:
   - 🇺🇸 VLESS_44_1
-  - 🇫🇷 VLESS_13_2
-  - 🇷🇴 VLESS_232_3
-  - 🇫🇷 VLESS_2001:bc8:32d7:181::2_4
-  - 🇫🇷 VLESS_2001:bc8:32d7:181::3_5
-  - 🇹🇼 VLESS_14_6
+  - 🇷🇴 VLESS_232_2
+  - 🇫🇷 VLESS_13_3
   url: http://www.gstatic.com/generate_204
   interval: 300
 - name: 🔰 手动切换
@@ -76,12 +41,9 @@ proxy-groups:
   proxies:
   - 🚀 自动选择
   - 🇺🇸 VLESS_44_1
-  - 🇫🇷 VLESS_13_2
-  - 🇷🇴 VLESS_232_3
-  - 🇫🇷 VLESS_2001:bc8:32d7:181::2_4
-  - 🇫🇷 VLESS_2001:bc8:32d7:181::3_5
-  - 🇹🇼 VLESS_14_6
-- name: '🕒 更新: 2026-01-03 21:51'
+  - 🇷🇴 VLESS_232_2
+  - 🇫🇷 VLESS_13_3
+- name: '🕒 更新: 2026-01-03 21:57'
   type: select
   proxies:
   - 🚀 自动选择
