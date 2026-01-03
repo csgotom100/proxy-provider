@@ -35,18 +35,14 @@ OUTPUT_DIR = './sub'
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 ctx = ssl._create_unverified_context()
 
-# --- 2. 解析逻辑 ---
+# --- 2. 解析函数 ---
 def get_node_info(item):
-    """提取节点核心信息"""
     try:
         if not isinstance(item, dict): return None
         srv = item.get('server') or item.get('add') or item.get('address')
         if not srv or str(srv).startswith('127.'): return None
-        
         port = item.get('port') or item.get('server_port') or item.get('port_num')
-        if not port and ':' in str(srv): 
-            srv, port = str(srv).rsplit(':', 1)
-        
+        if not port and ':' in str(srv): srv, port = str(srv).rsplit(':', 1)
         pwd = item.get('password') or item.get('uuid') or item.get('id') or item.get('auth')
         if not srv or not port or not pwd: return None
 
@@ -64,11 +60,9 @@ def get_node_info(item):
             node["pbk"] = ry.get('public-key') or ry.get('publicKey')
             node["sid"] = ry.get('short-id') or ry.get('shortId') or ""
         return node
-    except:
-        return None
+    except: return None
 
 def extract_dicts(obj):
-    """深度递归提取字典对象"""
     res = []
     if isinstance(obj, dict):
         res.append(obj)
@@ -78,8 +72,24 @@ def extract_dicts(obj):
     return res
 
 def generate_raw_link(n, name):
-    """转换为通用 URI 格式"""
     from urllib.parse import quote
     encoded_name = quote(name)
     if n['type'] == 'hysteria2':
-        return f"hysteria2://{n['secret']}
+        # 修正断行隐患，使用单行拼接
+        return f"hysteria2://{n['secret']}@{n['server']}:{n['port']}?sni={n['sni']}&insecure=1#{encoded_name}"
+    elif n['type'] == 'vless':
+        link = f"vless://{n['secret']}@{n['server']}:{n['port']}?encryption=none&security=tls&sni={n['sni']}"
+        if n.get('pbk'):
+            link = link.replace("security=tls", "security=reality") + f"&fp=chrome&pbk={n['pbk']}&sid={n['sid']}"
+        return f"{link}#{encoded_name}"
+    return None
+
+# --- 3. 主程序 ---
+def main():
+    all_nodes = []
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    
+    target_urls = FIXED_SOURCES.copy()
+    if os.path.exists(MANUAL_FILE):
+        try:
+            with open(MANUAL_
