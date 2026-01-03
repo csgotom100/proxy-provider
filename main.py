@@ -82,4 +82,39 @@ def parse_remote(url):
                     nodes = [{"name":"Juicity","type":"juicity","server":s,"port":int(p),"uuid":jd.get("uuid"),"sni":jd.get("sni"),"pinned-certchain-sha256":jd.get("pinned_certchain_sha256")}]
                 elif "mieru" in url:
                     profile = jd.get("profiles", [{}])[0]
-                    nodes = [{"name":"Mieru","type
+                    nodes = [{"name":"Mieru","type":"mieru","server":jd.get("server"),"port":jd.get("port"),"username":profile.get("username"),"password":profile.get("password"),"transport":profile.get("transport","tcp")}]
+                elif "naiveproxy" in url:
+                    match = re.search(r'https://(.*):(.*)@(.*)', jd.get("proxy", ""))
+                    if match:
+                        nodes = [{"name":"Naive","type":"socks5","server":match.group(3),"port":443,"username":match.group(1),"password":match.group(2),"tls":True}]
+                elif "hysteria2" in url:
+                    s, p = jd["server"].split(":")
+                    nodes = [{"name":"Hys2","type":"hysteria2","server":s,"port":int(p),"password":jd.get("auth"),"sni":jd.get("server_name"),"skip-cert-verify":True}]
+                else:
+                    outbounds = jd.get("outbounds", [])
+                    for out in outbounds:
+                        if out.get("server") and out.get("type") not in ["direct", "block", "dns"]:
+                            nodes.append({
+                                "name": out.get("type").upper(), 
+                                "type": out['type'].replace("shadowsocks","ss"), 
+                                "server": out['server'], 
+                                "port": out['server_port'], 
+                                "uuid": out.get("uuid"), 
+                                "password": out.get("password"), 
+                                "cipher": out.get("method"), 
+                                "sni": out.get("tls", {}).get("server_name")
+                            })
+    except: pass
+    return nodes
+
+def process_node(proxy):
+    server = proxy.get('server')
+    port = proxy.get('port')
+    if not server or not port: return None
+    
+    delay, ip = get_tcp_delay(server, port)
+    if delay is not None:
+        location = get_location(ip)
+        now_beijing = datetime.now(BEIJING_TZ).strftime("%H:%M")
+        
+        if proxy.get('type') in ['vless', 'trojan', 'vmess', 'hysteria2', '
