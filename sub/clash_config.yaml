@@ -19,26 +19,34 @@ dns:
   - 8.8.8.8
   - 1.1.1.1
 proxies:
-- name: '[未知] JUICITY_157.254.223.48 [0ms] (18:18)'
+- name: '[美国] HYSTERIA2_157.254.223.43 [34ms] (18:28)'
+  type: hysteria2
+  server: 157.254.223.43
+  port: 27921
+  password: dongtaiwang.com
+  uuid: null
+  sni: null
+  client-fingerprint: chrome
+  tfo: true
+  _geo: 美国
+- name: '[未知] JUICITY_157.254.223.48 [0ms] (18:28)'
   type: juicity
   server: 157.254.223.48
   port: 45889
+  password: null
   uuid: abbf6900-2bfb-4019-89e4-4875e831cea8
   sni: us3.193919.xyz
   client-fingerprint: chrome
-  tls-fragment: 10-30,5-10
   tfo: true
   _geo: 未知
-- name: '[美国] VLESS_157.254.223.44 [24ms] (18:18)'
-  type: vless
-  server: 157.254.223.44
-  port: 18959
-  uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
-  password: null
-  cipher: null
-  sni: itunes.apple.com
+- name: '[美国] SOCKS5_us.193919.xyz [73ms] (18:28)'
+  type: socks5
+  server: us.193919.xyz
+  port: 44000
+  username: dongtaiwang.com
+  password: dongtaiwang.com
+  tls: true
   client-fingerprint: chrome
-  tls-fragment: 10-30,5-10
   tfo: true
   _geo: 美国
 proxy-groups:
@@ -52,8 +60,9 @@ proxy-groups:
   - 🇸🇬 新加坡节点
   - 🌍 剩余地区
   - DIRECT
-  - '[未知] JUICITY_157.254.223.48 [0ms] (18:18)'
-  - '[美国] VLESS_157.254.223.44 [24ms] (18:18)'
+  - '[美国] HYSTERIA2_157.254.223.43 [34ms] (18:28)'
+  - '[未知] JUICITY_157.254.223.48 [0ms] (18:28)'
+  - '[美国] SOCKS5_us.193919.xyz [73ms] (18:28)'
 - name: 📺 国际流媒体
   type: select
   proxies:
@@ -85,15 +94,15 @@ proxy-groups:
   interval: 300
   tolerance: 50
   proxies:
-  - '[未知] JUICITY_157.254.223.48 [0ms] (18:18)'
-  - '[美国] VLESS_157.254.223.44 [24ms] (18:18)'
+  - '[美国] HYSTERIA2_157.254.223.43 [34ms] (18:28)'
+  - '[未知] JUICITY_157.254.223.48 [0ms] (18:28)'
+  - '[美国] SOCKS5_us.193919.xyz [73ms] (18:28)'
 - name: 🇭🇰 香港节点
   type: select
   proxies: []
 - name: 🇺🇸 美国节点
   type: select
-  proxies:
-  - '[美国] VLESS_157.254.223.44 [24ms] (18:18)'
+  proxies: []
 - name: 🇯🇵 日本节点
   type: select
   proxies: []
@@ -102,8 +111,7 @@ proxy-groups:
   proxies: []
 - name: 🌍 剩余地区
   type: select
-  proxies:
-  - '[未知] JUICITY_157.254.223.48 [0ms] (18:18)'
+  proxies: []
 rules:
 - DOMAIN-KEYWORD,adserver,REJECT
 - DOMAIN-SUFFIX,googleadservices.com,REJECT
