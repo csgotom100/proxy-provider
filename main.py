@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 
 # --- 基础配置 ---
-TIMEOUT = 5.0            # 增加测速超时到 5 秒，防止 GitHub 网络波动
+TIMEOUT = 5.0
 MAX_THREADS = 50
 SOURCE_FILE = './urls/manual_json.txt'
 TEMPLATE_FILE = './templates/clash_template.yaml'
@@ -45,28 +45,44 @@ def get_tcp_delay(server, port):
     except: return None, None
 
 def to_link(p):
+    """生成通用订阅链接，支持更多协议"""
     try:
         name = urllib.parse.quote(p.get('name', 'Proxy'))
         srv, prt = p.get('server'), p.get('port')
         if not srv or not prt: return None
+        
+        # Hysteria2
         if p['type'] == 'hysteria2':
-            pw = p.get('password','')
-            sn = p.get('sni','')
+            pw, sn = p.get('password',''), p.get('sni','')
             return f"hy2://{pw}@{srv}:{prt}?insecure=1&sni={sn}#{name}"
+        
+        # Shadowsocks
         elif p['type'] == 'ss':
             m, pw = p.get('cipher'), p.get('password')
             if not m or not pw: return None
             auth = base64.b64encode(f"{m}:{pw}".encode()).decode()
             return f"ss://{auth}@{srv}:{prt}#{name}"
+            
+        # VLESS (新增支持)
+        elif p['type'] == 'vless':
+            uuid = p.get('uuid')
+            sni = p.get('sni', '')
+            # 基础 vless 链接格式，不含复杂传输层参数，确保通用性
+            return f"vless://{uuid}@{srv}:{prt}?encryption=none&security=tls&sni={sni}#{name}"
+            
+        # VMess (简易 Base64 格式)
+        elif p['type'] == 'vmess':
+            v_conf = {"v":"2","ps":p.get('name'),"add":srv,"port":prt,"id":p.get('uuid'),"aid":"0","net":"tcp","type":"none","tls":"tls"}
+            v_json = json.dumps(v_conf)
+            v_b64 = base64.b64encode(v_json.encode()).decode()
+            return f"vmess://{v_b64}"
+            
     except: return None
+    return None
 
 def parse_remote(url):
     nodes = []
-    # 增加更真实的浏览器头
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
-        'Accept': '*/*'
-    }
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     try:
         print(f"正在抓取: {url}")
         req = urllib.request.Request(url, headers=headers)
@@ -74,8 +90,7 @@ def parse_remote(url):
             raw = res.read().decode('utf-8')
             if "clash" in url or "shadowquic" in url or url.endswith(".yaml"):
                 data = yaml.safe_load(raw)
-                if data and 'proxies' in data:
-                    nodes = data.get('proxies', [])
+                if data and 'proxies' in data: nodes = data.get('proxies', [])
             else:
                 jd = json.loads(raw)
                 if "juicity" in url:
@@ -86,8 +101,7 @@ def parse_remote(url):
                     nodes = [{"name":"Mieru","type":"mieru","server":jd.get("server"),"port":jd.get("port"),"username":prof.get("username"),"password":prof.get("password")}]
                 elif "naiveproxy" in url:
                     m = re.search(r'https://(.*):(.*)@(.*)', jd.get("proxy", ""))
-                    if m:
-                        nodes = [{"name":"Naive","type":"socks5","server":m.group(3),"port":443,"username":m.group(1),"password":m.group(2),"tls":True}]
+                    if m: nodes = [{"name":"Naive","type":"socks5","server":m.group(3),"port":443,"username":m.group(1),"password":m.group(2),"tls":True}]
                 elif "hysteria2" in url:
                     s, p = jd["server"].split(":")
                     nodes = [{"name":"Hys2","type":"hysteria2","server":s,"port":int(p),"password":jd.get("auth"),"sni":jd.get("server_name")}]
@@ -95,9 +109,8 @@ def parse_remote(url):
                     for out in jd.get("outbounds", []):
                         if out.get("server") and out.get("type") not in ["direct", "block", "dns"]:
                             nodes.append({"name":out.get("type").upper(),"type":out['type'].replace("shadowsocks","ss"),"server":out['server'],"port":out['server_port'],"uuid":out.get("uuid"),"password":out.get("password"),"cipher":out.get("method"),"sni":out.get("tls",{}).get("server_name")})
-        print(f"成功从该源获取 {len(nodes)} 个节点")
-    except Exception as e:
-        print(f"抓取失败 {url}: {e}")
+        print(f"成功获取 {len(nodes)} 个节点")
+    except Exception as e: print(f"抓取失败 {url}: {e}")
     return nodes
 
 def process_node(proxy):
@@ -123,11 +136,7 @@ if __name__ == "__main__":
     urls = []
     if os.path.exists(SOURCE_FILE):
         with open(SOURCE_FILE, 'r', encoding='utf-8') as f:
-            content = f.read()
-            # 改进正则，兼容更多格式
-            urls = re.findall(r'https?://[^\s\'"\[\],]+', content)
-    
-    print(f"共识别到 {len(urls)} 个数据源 URL")
+            urls = re.findall(r'https?://[^\s\'"\[\],]+', f.read())
     
     unique_proxies = {}
     for url in urls:
@@ -136,15 +145,12 @@ if __name__ == "__main__":
             if s and p and t:
                 try:
                     key = (str(s).lower(), int(p), str(t).lower())
-                    if key not in unique_proxies:
-                        unique_proxies[key] = node
+                    if key not in unique_proxies: unique_proxies[key] = node
                 except: continue
 
-    print(f"⚡ 去重后总计 {len(unique_proxies)} 个节点，开始测速...")
     with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
         final_nodes = [r for r in executor.map(process_node, list(unique_proxies.values())) if r]
 
-    # --- 写入逻辑（即使为 0 也要创建空文件防止 Git 报错） ---
     if os.path.exists(TEMPLATE_FILE):
         with open(TEMPLATE_FILE, 'r', encoding='utf-8') as f:
             tpl = yaml.safe_load(f)
