@@ -129,4 +129,52 @@ def main():
                     try:
                         decoded = base64.b64decode(raw_text).decode('utf-8', errors='ignore')
                         # 这里简单识别 vless:// 链接中的关键信息并模拟成字典
-                        links
+                        links = re.findall(r'vless://([^@]+)@([^:]+):(\d+)', decoded + raw_text)
+                        for l in links:
+                            all_nodes.append({"type":"vless","secret":l[0],"server":l[1],"port":int(l[2]),"sni":""})
+                    except: pass
+                
+                print(f"成功从 {url[:40]}... 提取了 {len(all_nodes) - count_before} 个节点")
+        except: continue
+
+    # 去重
+    unique_list = []
+    seen = set()
+    for n in all_nodes:
+        key = (n['server'], n['port'], n['secret'])
+        if key not in seen:
+            unique_list.append(n)
+            seen.add(key)
+
+    # 构造 Clash 格式
+    proxies = []
+    for i, n in enumerate(unique_list):
+        name = f"{n['type'].upper()}_{str(n['server'])[-4:]}_{i+1}"
+        p = {"name": name, "type": n['type'], "server": n['server'], "port": n['port'], "skip-cert-verify": True}
+        
+        if n['type'] == 'hysteria2':
+            p["password"] = n['secret']
+            p["sni"] = n['sni']
+        elif n['type'] in ['vless', 'vmess']:
+            p["uuid"] = n['secret']
+            p["tls"] = True
+            p["servername"] = n['sni']
+            if n.get('pbk'):
+                p["reality-opts"] = {"public-key": n['pbk'], "short-id": n['sid']}
+                p["network"] = "tcp"
+        proxies.append(p)
+
+    # 写入文件
+    conf = {
+        "proxies": proxies,
+        "proxy-groups": [{"name": "PROXY", "type": "select", "proxies": [x['name'] for x in proxies]}],
+        "rules": ["MATCH,PROXY"]
+    }
+    
+    with open(f"{OUTPUT_DIR}/clash.yaml", 'w', encoding='utf-8') as f:
+        yaml.dump(conf, f, allow_unicode=True, sort_keys=False)
+    
+    print(f"🏁 任务完成！共计有效节点: {len(proxies)}")
+
+if __name__ == "__main__":
+    main()
