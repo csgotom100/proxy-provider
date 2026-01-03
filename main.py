@@ -7,16 +7,47 @@ ctx = ssl._create_unverified_context()
 
 def handle_vless(d):
     try:
+        # 获取基础连接信息
         if 'vnext' in d.get('settings', {}):
             v = d['settings']['vnext'][0]
             s, p, u = v.get('address'), v.get('port'), v['users'][0].get('id')
         else:
             s, p, u = d.get('server') or d.get('add'), d.get('server_port') or d.get('port'), d.get('uuid') or d.get('id')
+        
         if not (s and u): return None
+        
+        # 提取传输层和安全层配置 (Strictly from JSON)
         ss = d.get('streamSettings', {})
-        rl = ss.get('realitySettings', d.get('reality', {}))
-        sn = rl.get('serverName') or ss.get('tlsSettings',{}).get('serverName') or d.get('sni','itunes.apple.com')
-        return {"s":str(s),"p":int(p),"u":str(u),"t":"vless","sn":sn,"pbk":rl.get('publicKey') or d.get('public_key'),"sid":rl.get('shortId') or d.get('short_id',""),"net":ss.get('network', d.get('net','tcp'))}
+        net = ss.get('network', d.get('net', 'tcp'))
+        sec = ss.get('security', d.get('security', 'none'))
+        
+        node = {
+            "s": str(s), "p": int(p), "u": str(u), "t": "vless",
+            "net": net, "sec": sec, "sn": None, "pbk": None, "sid": None,
+            "path": None, "host": None, "fp": None
+        }
+
+        # 处理 Reality 逻辑 (仅当 JSON 存在时提取)
+        rl = ss.get('realitySettings', d.get('reality'))
+        if rl:
+            node["sn"] = rl.get('serverName')
+            node["pbk"] = rl.get('publicKey')
+            node["sid"] = rl.get('shortId')
+            node["fp"] = rl.get('fingerprint')
+
+        # 处理 TLS/SNI 逻辑 (如果不是 Reality 而是普通 TLS)
+        tls = ss.get('tlsSettings', d.get('tls'))
+        if tls and not node["sn"]:
+            node["sn"] = tls.get('serverName') or d.get('sni')
+
+        # 处理传输层设置 (WS/GRPC/XHTTP/H2)
+        ts = ss.get(f"{net}Settings")
+        if ts:
+            node["path"] = ts.get('path') or d.get('path')
+            h_obj = ts.get('headers', {})
+            node["host"] = h_obj.get('Host') or d.get('host')
+
+        return node
     except: return None
 
 def handle_hy2(d):
@@ -25,12 +56,11 @@ def handle_hy2(d):
         if not sr or not u or d.get('protocol')=='freedom': return None
         h = sr.split(':')[0].replace('[','').replace(']','')
         pt = re.findall(r'\d+', sr.split(':')[1])[0] if ':' in sr else 443
-        return {"s":h,"p":int(pt),"u":str(u),"t":"hysteria2","sn":d.get('sni') or d.get('server_name') or "apple.com"}
+        return {"s":h,"p":int(pt),"u":str(u),"t":"hysteria2","sn":d.get('sni') or d.get('server_name')}
     except: return None
 
 def handle_naive(d):
     try:
-        # 匹配 Alvin 源中常见的 NaiveProxy 格式
         m = re.search(r'https://([^:]+):([^@]+)@([^:]+):(\d+)', d.get('proxy',''))
         if m: return {"u":m.group(1),"pw":m.group(2),"s":m.group(3),"p":int(m.group(4)),"t":"naive","sn":m.group(3)}
     except: return None
@@ -55,7 +85,6 @@ def main():
                 raw = resp.read().decode('utf-8', errors='ignore')
                 data = json.loads(raw) if '{' in raw else yaml.safe_load(raw)
                 for d in find_dicts(data):
-                    # 关键修复点：依次尝试解析所有协议
                     n = handle_vless(d) or handle_hy2(d) or handle_naive(d)
                     if n: nodes.append(n)
         except: continue
@@ -70,41 +99,38 @@ def main():
         px = {"name": nm, "server": n['s'], "port": n['p'], "skip-cert-verify": True}
         
         if n['t'] == 'vless':
-            px.update({"type":"vless","uuid":n['u'],"tls":True,"udp":True,"servername":n['sn'],"network":n['net'],"client-fingerprint":"chrome"})
-            if n.get('pbk'): px.update({"reality-opts":{"public-key":n['pbk'],"short-id":n['sid']}})
-            v2_links.append(f"vless://{n['u']}@{n['s']}:{n['p']}?encryption=none&security=reality&sni={n['sn']}&fp=chrome&pbk={n.get('pbk','')}&sid={n.get('sid','')}&type={n['net']}#{nm}")
+            px.update({"type":"vless","uuid":n['u'],"udp":True,"network":n['net']})
+            if n['sec'] in ['tls', 'reality']:
+                px["tls"] = True
+                if n['sn']: px["servername"] = n['sn']
+                if n['fp']: px["client-fingerprint"] = n['fp']
+            if n['sec'] == 'reality' and n['pbk']:
+                px["reality-opts"] = {"public-key": n['pbk'], "short-id": n['sid'] or ""}
+            if n['net'] in ['ws', 'grpc', 'xhttp']:
+                px[f"{n['net']}-opts"] = {k: v for k, v in {"path": n['path'], "headers": {"Host": n['host']} if n['host'] else None}.items() if v}
+            
+            # 生成 v2rayN 链接 (严格匹配)
+            link = f"vless://{n['u']}@{n['s']}:{n['p']}?type={n['net']}&security={n['sec']}"
+            if n['sn']: link += f"&sni={n['sn']}"
+            if n['fp']: link += f"&fp={n['fp']}"
+            if n['pbk']: link += f"&pbk={n['pbk']}&sid={n['sid'] or ''}"
+            if n['path']: link += f"&path={n['path']}"
+            v2_links.append(f"{link}#{nm}")
         
         elif n['t'] == 'hysteria2':
             px.update({"type":"hysteria2","password":n['u'],"sni":n['sn']})
-            v2_links.append(f"hysteria2://{n['u']}@{n['s']}:{n['p']}?sni={n['sn']}&insecure=1#{nm}")
+            v2_links.append(f"hysteria2://{n['u']}@{n['s']}:{n['p']}?sni={n['sn'] or ''}#{nm}")
         
         elif n['t'] == 'naive':
-            # NaiveProxy 在 Clash 中表现为 type: http
             px.update({"type":"http","username":n['u'],"password":n['pw'],"tls":True,"sni":n['sn'],"proxy-octet-stream":True})
-            # 在 node.txt 中以 http:// 格式保存，v2rayN 可识别
             v2_links.append(f"http://{n['u']}:{n['pw']}@{n['s']}:{n['p']}#{nm}")
 
         clash_px.append(px)
 
-    conf = {
-        "proxies": clash_px,
-        "proxy-groups": [
-            {"name": "🚀 节点选择", "type": "select", "proxies": ["⚡ 自动选择"] + [p['name'] for p in clash_px] + ["DIRECT"]},
-            {"name": "⚡ 自动选择", "type": "url-test", "proxies": [p['name'] for p in clash_px], "url": "http://www.gstatic.com/generate_204", "interval": 300},
-            {"name": "🌍 全球直连", "type": "select", "proxies": ["DIRECT", "🚀 节点选择"]},
-            {"name": "🐟 漏网之鱼", "type": "select", "proxies": ["🚀 节点选择", "DIRECT"]}
-        ],
-        "rules": ["GEOIP,LAN,DIRECT", "GEOIP,CN,🌍 全球直连", "MATCH,🐟 漏网之鱼"]
-    }
+    conf = {"proxies": clash_px, "proxy-groups": [{"name": "🚀 节点选择", "type": "select", "proxies": ["⚡ 自动选择"] + [p['name'] for p in clash_px] + ["DIRECT"]}, {"name": "⚡ 自动选择", "type": "url-test", "proxies": [p['name'] for p in clash_px], "url": "http://www.gstatic.com/generate_204", "interval": 300}], "rules": ["MATCH,🚀 节点选择"]}
+    with open(f"{OUT_DIR}/clash.yaml",'w',encoding='utf-8') as f: yaml.dump(conf, f, allow_unicode=True, sort_keys=False)
+    with open(f"{OUT_DIR}/node.txt",'w',encoding='utf-8') as f: f.write("\n".join(v2_links))
+    with open(f"{OUT_DIR}/sub.txt",'w',encoding='utf-8') as f: f.write(base64.b64encode("\n".join(v2_links).encode()).decode())
+    print(f"✅ Success: {len(clash_px)}")
 
-    with open(f"{OUT_DIR}/clash.yaml", 'w', encoding='utf-8') as f:
-        yaml.dump(conf, f, allow_unicode=True, sort_keys=False)
-    with open(f"{OUT_DIR}/node.txt", 'w', encoding='utf-8') as f:
-        f.write("\n".join(v2_links))
-    with open(f"{OUT_DIR}/sub.txt", 'w', encoding='utf-8') as f:
-        f.write(base64.b64encode("\n".join(v2_links).encode()).decode())
-
-    print(f"✅ 处理完成! 节点总数: {len(clash_px)} (包含 Naive: {len([x for x in uniq if x['t']=='naive'])})")
-
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": main()
