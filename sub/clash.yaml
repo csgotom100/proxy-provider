@@ -1,24 +1,13 @@
 proxies:
-- name: '[法国] VLESS_0.13'
-  type: vless
-  server: 195.154.200.13
-  port: 17401
-  skip-cert-verify: true
-  uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
-  reality-opts:
-    public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
-    short-id: 8ef4455ba637425b
-- name: '[美国] VLESS_3.44'
-  type: vless
-  server: 157.254.223.44
+- server: 157.254.223.44
   port: 18959
-  skip-cert-verify: true
+  type: vless
   uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
+  name: '[美国] VLESS_3.44'
 proxy-groups:
 - name: 🚀 自动选择
   type: url-test
   proxies:
-  - '[法国] VLESS_0.13'
   - '[美国] VLESS_3.44'
   url: http://www.gstatic.com/generate_204
   interval: 300
@@ -26,7 +15,6 @@ proxy-groups:
   type: select
   proxies:
   - 🚀 自动选择
-  - '[法国] VLESS_0.13'
   - '[美国] VLESS_3.44'
 rules:
 - MATCH,🔰 节点切换
