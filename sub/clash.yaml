@@ -1,142 +1,136 @@
 proxies:
-- name: 🌐 HYSTERIA2_1_23.43
+- name: 01_HYSTERIA2_43
   server: 157.254.223.43
   port: 27921
   skip-cert-verify: true
   type: hysteria2
   password: dongtaiwang.com
-  sni: www.apple.com
-- name: 🌐 HYSTERIA2_2_4.146
+  sni: apple.com
+- name: 02_HYSTERIA2_146
   server: 62.210.124.146
   port: 22000
   skip-cert-verify: true
   type: hysteria2
   password: dongtaiwang.com
-  sni: www.apple.com
-- name: 🌐 HYSTERIA2_3_94.63
+  sni: apple.com
+- name: 03_HYSTERIA2_63
   server: 51.158.194.63
   port: 32952
   skip-cert-verify: true
   type: hysteria2
   password: dongtaiwang.com
-  sni: www.apple.com
-- name: 🌐 HYSTERIA2_4_23.48
+  sni: apple.com
+- name: 04_HYSTERIA2_48
   server: 157.254.223.48
   port: 45889
   skip-cert-verify: true
   type: hysteria2
   password: dongtaiwang.com
   sni: us3.193919.xyz
-- name: 🌐 NAIVE_5_9.xyz
-  server: us.193919.xyz
-  port: 44000
-  skip-cert-verify: true
-  type: http
-  username: dongtaiwang.com
-  password: dongtaiwang.com
-  tls: true
-  sni: us.193919.xyz
-  proxy-octet-stream: true
-- name: 🌐 NAIVE_6_2.xyz
-  server: naive1.336892.xyz
-  port: 22338
-  skip-cert-verify: true
-  type: http
-  username: dongtaiwang.com
-  password: dongtaiwang.com
-  tls: true
-  sni: naive1.336892.xyz
-  proxy-octet-stream: true
-- name: 🌐 VLESS_11_7.177
+- name: 05_VLESS_177
   server: 62.210.127.177
   port: 60011
   skip-cert-verify: true
   type: vless
   uuid: a1f699e4-d7b7-4cdc-8414-1105e08fe4c5
   tls: true
+  udp: true
   servername: www.pixiv.co.jp
   network: xhttp
-  udp: true
+  client-fingerprint: chrome
   reality-opts:
     public-key: BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic
     short-id: ea22dff3025e4ff8
-- name: 🌐 VLESS_12_5.230
+- name: 06_VLESS_230
   server: 89.144.35.230
   port: 54582
   skip-cert-verify: true
   type: vless
   uuid: 5cfc52bc-e701-4160-89df-930a0c040576
   tls: true
+  udp: true
   servername: apple.com
   network: xhttp
-  udp: true
+  client-fingerprint: chrome
   reality-opts:
     public-key: kfw5DgkyKiovC3dzb-o2PUYnZPnbYvbx2IwERUv9czY
     short-id: 225e2cc8
-- name: 🌐 VLESS_13_4f::6
+- name: 07_VLESS_2001:bc8:32d7:14f::6
   server: 2001:bc8:32d7:14f::6
   port: 60011
   skip-cert-verify: true
   type: vless
   uuid: a1f699e4-d7b7-4cdc-8414-1105e08fe4c5
   tls: true
+  udp: true
   servername: www.pixiv.co.jp
   network: xhttp
-  udp: true
+  client-fingerprint: chrome
   reality-opts:
     public-key: BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic
     short-id: ea22dff3025e4ff8
-- name: 🌐 VLESS_14_23.44
+- name: 08_VLESS_44
   server: 157.254.223.44
   port: 18959
   skip-cert-verify: true
   type: vless
   uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
   tls: true
-  servername: www.apple.com
-  network: tcp
   udp: true
-- name: 🌐 VLESS_15_5.232
+  servername: itunes.apple.com
+  network: tcp
+  client-fingerprint: chrome
+- name: 09_VLESS_232
   server: 89.144.35.232
   port: 15531
   skip-cert-verify: true
   type: vless
   uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
   tls: true
-  servername: www.apple.com
-  network: tcp
   udp: true
+  servername: itunes.apple.com
+  network: tcp
+  client-fingerprint: chrome
 proxy-groups:
-- name: 🚀 🚀
-  type: url-test
-  proxies:
-  - 🌐 HYSTERIA2_1_23.43
-  - 🌐 HYSTERIA2_2_4.146
-  - 🌐 HYSTERIA2_3_94.63
-  - 🌐 HYSTERIA2_4_23.48
-  - 🌐 NAIVE_5_9.xyz
-  - 🌐 NAIVE_6_2.xyz
-  - 🌐 VLESS_11_7.177
-  - 🌐 VLESS_12_5.230
-  - 🌐 VLESS_13_4f::6
-  - 🌐 VLESS_14_23.44
-  - 🌐 VLESS_15_5.232
-  url: http://www.gstatic.com/generate_204
-  interval: 300
-- name: 🔰 🔰
+- name: 🚀 节点选择
   type: select
   proxies:
-  - 🚀 🚀
-  - 🌐 HYSTERIA2_1_23.43
-  - 🌐 HYSTERIA2_2_4.146
-  - 🌐 HYSTERIA2_3_94.63
-  - 🌐 HYSTERIA2_4_23.48
-  - 🌐 NAIVE_5_9.xyz
-  - 🌐 NAIVE_6_2.xyz
-  - 🌐 VLESS_11_7.177
-  - 🌐 VLESS_12_5.230
-  - 🌐 VLESS_13_4f::6
-  - 🌐 VLESS_14_23.44
-  - 🌐 VLESS_15_5.232
+  - ⚡ 自动选择
+  - 01_HYSTERIA2_43
+  - 02_HYSTERIA2_146
+  - 03_HYSTERIA2_63
+  - 04_HYSTERIA2_48
+  - 05_VLESS_177
+  - 06_VLESS_230
+  - 07_VLESS_2001:bc8:32d7:14f::6
+  - 08_VLESS_44
+  - 09_VLESS_232
+  - DIRECT
+- name: ⚡ 自动选择
+  type: url-test
+  proxies:
+  - 01_HYSTERIA2_43
+  - 02_HYSTERIA2_146
+  - 03_HYSTERIA2_63
+  - 04_HYSTERIA2_48
+  - 05_VLESS_177
+  - 06_VLESS_230
+  - 07_VLESS_2001:bc8:32d7:14f::6
+  - 08_VLESS_44
+  - 09_VLESS_232
+  url: http://www.gstatic.com/generate_204
+  interval: 300
+- name: 🌍 全球直连
+  type: select
+  proxies:
+  - DIRECT
+  - 🚀 节点选择
+- name: 🐟 漏网之鱼
+  type: select
+  proxies:
+  - 🚀 节点选择
+  - DIRECT
 rules:
-- MATCH,🔰 🔰
+- GEOIP,LAN,DIRECT
+- GEOIP,CN,🌍 全球直连
+- MATCH,🐟 漏网之鱼
