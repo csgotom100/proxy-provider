@@ -1,32 +1,19 @@
 proxies:
-- name: Node_1_HYSTERIA2_146
+- name: 🇺🇸 HYSTERIA2_1
+  type: hysteria2
+  server: 157.254.223.43
+  port: 27921
+  skip-cert-verify: true
+  password: dongtaiwang.com
+  sni: apple.com
+- name: 🇫🇷 HYSTERIA2_2
   type: hysteria2
   server: 62.210.124.146
   port: 22000
   skip-cert-verify: true
-  password: null
-  sni: bing.com
-- name: Node_2_NAIVE_xyz
-  type: naive
-  server: us.193919.xyz
-  port: 44000
-  skip-cert-verify: true
-  username: dongtaiwang.com
   password: dongtaiwang.com
-  proxy-octet-stream: true
-- name: Node_3_VLESS_232
-  type: vless
-  server: 89.144.35.232
-  port: 15531
-  skip-cert-verify: true
-  uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
-  tls: true
-  servername: itunes.apple.com
-  network: tcp
-  reality-opts:
-    public-key: o4gXQf1n5YOoLo6OnyHykodK1ZShHvDqu1FgxNHe6n8
-    short-id: 8346964417a2552b
-- name: Node_4_VLESS_44
+  sni: www.microsoft.com
+- name: 🇺🇸 VLESS_3
   type: vless
   server: 157.254.223.44
   port: 18959
@@ -38,21 +25,28 @@ proxies:
   reality-opts:
     public-key: -hwVEdgFkvjku8ESuDoAA7id5yGGv_zXBvBW_RdhmHA
     short-id: d557c6895d014075
-- name: Node_5_HYSTERIA2_48
-  type: hysteria2
+- name: 🇷🇴 VLESS_4
+  type: vless
+  server: 89.144.35.232
+  port: 15531
+  skip-cert-verify: true
+  uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
+  tls: true
+  servername: itunes.apple.com
+  network: tcp
+  reality-opts:
+    public-key: o4gXQf1n5YOoLo6OnyHykodK1ZShHvDqu1FgxNHe6n8
+    short-id: 8346964417a2552b
+- name: 🇺🇸 JUICITY_5
+  type: juicity
   server: 157.254.223.48
   port: 45889
   skip-cert-verify: true
-  password: null
-  sni: bing.com
-- name: Node_6_HYSTERIA2_63
-  type: hysteria2
-  server: 51.158.194.63
-  port: 32952
-  skip-cert-verify: true
-  password: null
-  sni: bing.com
-- name: Node_7_NAIVE_xyz
+  uuid: abbf6900-2bfb-4019-89e4-4875e831cea8
+  password: dongtaiwang.com
+  sni: us3.193919.xyz
+  congestion-control: bbr
+- name: 🏳️ NAIVE_6
   type: naive
   server: naive1.336892.xyz
   port: 22338
@@ -60,17 +54,33 @@ proxies:
   username: dongtaiwang.com
   password: dongtaiwang.com
   proxy-octet-stream: true
+- name: 🏳️ NAIVE_7
+  type: naive
+  server: us.193919.xyz
+  port: 44000
+  skip-cert-verify: true
+  username: dongtaiwang.com
+  password: dongtaiwang.com
+  proxy-octet-stream: true
+- name: 🇳🇱 HYSTERIA2_8
+  type: hysteria2
+  server: 51.158.194.63
+  port: 32952
+  skip-cert-verify: true
+  password: dongtaiwang.com
+  sni: www.microsoft.com
 proxy-groups:
 - name: 🚀 自动选择
   type: url-test
   proxies:
-  - Node_1_HYSTERIA2_146
-  - Node_2_NAIVE_xyz
-  - Node_3_VLESS_232
-  - Node_4_VLESS_44
-  - Node_5_HYSTERIA2_48
-  - Node_6_HYSTERIA2_63
-  - Node_7_NAIVE_xyz
+  - 🇺🇸 HYSTERIA2_1
+  - 🇫🇷 HYSTERIA2_2
+  - 🇺🇸 VLESS_3
+  - 🇷🇴 VLESS_4
+  - 🇺🇸 JUICITY_5
+  - 🏳️ NAIVE_6
+  - 🏳️ NAIVE_7
+  - 🇳🇱 HYSTERIA2_8
   url: http://www.gstatic.com/generate_204
   interval: 300
 rules:
