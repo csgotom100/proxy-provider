@@ -1,7 +1,6 @@
 import yaml
 import json
 import urllib.request
-import codecs
 import socket
 import time
 import re
@@ -14,179 +13,136 @@ from concurrent.futures import ThreadPoolExecutor
 TIMEOUT = 10.0           
 MAX_THREADS = 50
 FILTER_DEAD_NODES = False 
-SOURCE_FILE = './urls/manual_json.txt'
+SOURCE_FILE = './urls/manual_json.txt' # 这里放入你所有的在线 JSON/YAML 链接
 TEMPLATE_FILE = './templates/clash_template.yaml'
 OUTPUT_DIR = './sub'
 BEIJING_TZ = timezone(timedelta(hours=8))
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-GEO_CACHE = {}
 
-def get_location(ip):
-    if ip in GEO_CACHE: return GEO_CACHE[ip]
-    try:
-        url = f"http://ip-api.com/json/{ip}?lang=zh-CN"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=5) as res:
-            data = json.loads(res.read().decode('utf-8'))
-            if data.get('status') == 'success':
-                loc = data.get('country', '未知')
-                GEO_CACHE[ip] = loc
-                return loc
-    except: pass
-    return "未知"
+def get_node_type(item):
+    """根据字典特征智能判断节点协议类型"""
+    p_type = str(item.get('type', '')).lower()
+    if 'auth' in item or 'hy2' in p_type or 'hysteria2' in p_type: return 'hysteria2'
+    if 'uuid' in item or 'vless' in p_type: return 'vless'
+    if 'congestion_control' in item or 'juicity' in p_type: return 'juicity'
+    if 'proxy' in item and 'https://' in str(item.get('proxy')): return 'socks5' # Naive
+    if 'profiles' in item and 'rpcPort' in item: return 'socks5' # Mieru
+    return p_type if p_type in ['vless', 'hysteria2', 'juicity', 'socks5', 'ss', 'trojan', 'vmess'] else None
 
-def get_tcp_delay(server, port):
-    start_time = time.time()
-    try:
-        ip = socket.gethostbyname(server)
-        sock = socket.create_connection((ip, port), timeout=TIMEOUT)
-        sock.close()
-        return int((time.time() - start_time) * 1000), ip
-    except: return None, None
-
-def to_link(p):
-    """生成通用订阅链接"""
-    try:
-        name = urllib.parse.quote(p.get('name', 'Proxy'))
-        srv, prt = p.get('server'), p.get('port')
-        if not srv or not prt: return None
-        ptype = p.get('type', '').lower()
-        
-        if ptype == 'vless':
-            uuid = p.get('uuid')
-            # 基础参数
-            link = f"vless://{uuid}@{srv}:{prt}?encryption=none"
-            # TLS/REALITY 参数
-            security = p.get('security', 'none')
-            link += f"&security={security}"
-            if p.get('sni'): link += f"&sni={p.get('sni')}"
-            
-            if p.get('reality'):
-                r = p['reality']
-                link += f"&fp={r.get('fp','chrome')}&pbk={r.get('pbk')}&sid={r.get('sid')}"
-            
-            # 传输层
-            if p.get('network') == 'xhttp':
-                link += f"&type=xhttp&path={urllib.parse.quote(p.get('path','/'))}"
-            
-            return f"{link}#{name}"
-            
-        elif ptype == 'hysteria2':
-            return f"hy2://{p.get('password','')}@{srv}:{prt}?insecure=1&sni={p.get('sni','')}#{name}"
-        elif ptype == 'juicity':
-            return f"juicity://{p.get('uuid')}@{srv}:{prt}?sni={p.get('sni')}#{name}"
-        elif ptype == 'socks5':
-            return f"socks5://{p.get('username')}:{p.get('password')}@{srv}:{prt}#{name}"
-    except: return None
-    return None
+def extract_all_dicts(obj):
+    """递归提取 JSON/YAML 中所有的字典对象"""
+    res = []
+    if isinstance(obj, dict):
+        res.append(obj)
+        for v in obj.values(): res.extend(extract_all_dicts(v))
+    elif isinstance(obj, list):
+        for i in obj: res.extend(extract_all_dicts(i))
+    return res
 
 def parse_remote(url):
     nodes = []
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=15) as res:
-            raw = res.read().decode('utf-8')
-            data = yaml.safe_load(raw)
-            if not isinstance(data, dict): return []
+            content = res.read().decode('utf-8').strip()
+            data = json.loads(content) if (content.startswith('{') or content.startswith('[')) else yaml.safe_load(content)
+            
+            # 扫描所有可能的字典
+            all_dicts = extract_all_dicts(data)
+            for item in all_dicts:
+                # 1. 寻找服务器地址
+                srv = item.get('server') or item.get('add') or item.get('address') or item.get('ipAddress')
+                if not srv or str(srv).startswith('127.'): continue
+                
+                # 2. 寻找端口并清洗 (处理 443-445, 80/tcp 等情况)
+                prt = item.get('port') or item.get('server_port') or item.get('listen_port')
+                if not prt and ':' in str(srv): 
+                    srv, prt = str(srv).rsplit(':', 1)
+                if prt:
+                    prt = str(prt).split(',')[0].split('-')[0].split('/')[0].strip()
+                    if not prt.isdigit(): continue
+                else: continue
 
-            # --- 识别 Sing-box 格式 (outbounds 包含 type) ---
-            if "outbounds" in data:
-                for out in data["outbounds"]:
-                    # 仅抓取代理类协议
-                    if out.get("type") in ["vless", "shadowsocks", "trojan", "hysteria2", "tuic"]:
-                        # 兼容 Sing-box 字段名 (server_port) 与 Xray 字段名 (port)
-                        port = out.get("server_port") or out.get("port")
-                        server = out.get("server")
-                        if not server or not port: continue
-                        
-                        node = {
-                            "name": "SB_" + out.get("type").upper(),
-                            "type": out.get("type"),
-                            "server": server,
-                            "port": int(port),
-                            "uuid": out.get("uuid"),
-                            "password": out.get("password")
-                        }
-                        
-                        # 处理 Sing-box 嵌套的 TLS/REALITY
-                        tls_conf = out.get("tls", {})
-                        if tls_conf.get("enabled"):
-                            node["security"] = "reality" if tls_conf.get("reality", {}).get("enabled") else "tls"
-                            node["sni"] = tls_conf.get("server_name")
-                            if node["security"] == "reality":
-                                ry = tls_conf.get("reality", {})
-                                node["reality"] = {
-                                    "pbk": ry.get("public_key"),
-                                    "sid": ry.get("short_id"),
-                                    "fp": tls_conf.get("utls", {}).get("fingerprint", "chrome")
-                                }
-                        
-                        # 处理 Xray 标准 outbounds 格式 (settings 嵌套)
-                        if out.get("settings") and "vnext" in out["settings"]:
-                            vnext = out["settings"]["vnext"][0]
-                            node["server"] = vnext["address"]
-                            node["port"] = vnext["port"]
-                            node["uuid"] = vnext["users"][0]["id"]
-                            
-                        nodes.append(node)
+                # 3. 寻找密钥 (UUID/Password)
+                secret = item.get('password') or item.get('uuid') or item.get('auth') or item.get('id')
+                if not secret and 'proxy' not in item: continue # Naive 特殊处理
 
-            # --- 识别单节点 JSON 格式 ---
-            elif data.get("proxy") and "https://" in data.get("proxy"):
-                m = re.search(r'https://(.*):(.*)@(.*):(\d+)', data.get("proxy"))
-                if m: nodes.append({"name":"Naive","type":"socks5","server":m.group(3),"port":int(m.group(4)),"username":m.group(1),"password":m.group(2),"tls":True})
-            elif data.get("auth") or data.get("congestion_control"):
-                m = re.search(r'([\d\.]+):(\d+)', data.get("server", ""))
-                if m:
-                    t = "hysteria2" if data.get("auth") else "juicity"
-                    nodes.append({"name":t.capitalize(),"type":t,"server":m.group(1),"port":int(m.group(2)),"password":data.get("auth"),"uuid":data.get("uuid"),"sni":data.get("sni")})
-            elif 'proxies' in data:
-                nodes = data.get('proxies', [])
+                # 4. 判定协议
+                ntype = get_node_type(item)
+                if not ntype: continue
 
-    except Exception as e: print(f"ERROR: {url} 失败: {e}")
+                # 5. 构造标准化节点字典
+                node = {
+                    "name": f"{ntype.upper()}_{srv}",
+                    "type": ntype,
+                    "server": str(srv).replace('[','').replace(']',''),
+                    "port": int(prt),
+                    "password": secret if ntype != 'vless' else None,
+                    "uuid": secret if ntype == 'vless' else None,
+                    "sni": item.get('sni') or item.get('server_name') or item.get('serverName'),
+                    "skip-cert-verify": True
+                }
+                
+                # 针对 Reality 特殊处理
+                tls_obj = item.get('tls', {}) if isinstance(item.get('tls'), dict) else {}
+                ry = tls_obj.get('reality') or item.get('reality') or {}
+                if ry and isinstance(ry, dict):
+                    node["reality"] = {"pbk": ry.get('public_key') or ry.get('publicKey'), "sid": ry.get('short_id') or ry.get('shortId')}
+                
+                nodes.append(node)
+    except Exception as e: print(f"抓取失败 {url}: {e}")
     return nodes
 
-def process_node(proxy):
-    srv, prt = proxy.get('server'), proxy.get('port')
-    if not srv or not prt: return None
-    delay, ip = get_tcp_delay(srv, prt)
-    if delay is None:
-        if FILTER_DEAD_NODES: return None
-        delay, ip = 0, srv 
-    loc = get_location(ip) if delay > 0 else "未知"
-    now = datetime.now(BEIJING_TZ).strftime("%H:%M")
-    proxy['client-fingerprint'] = 'chrome'
-    proxy['tfo'] = True
-    p_t = proxy.get('type', 'proxy').upper()
-    proxy['_geo'] = loc
-    proxy['name'] = f"[{loc}] {p_t}_{srv} [{delay}ms] ({now})"
-    return proxy
+def to_link(p):
+    """生成通用节点链接"""
+    try:
+        name = urllib.parse.quote(p['name'])
+        s, prt = p['server'], p['port']
+        if p['type'] == 'hysteria2':
+            return f"hy2://{p['password']}@{s}:{prt}?insecure=1&sni={p.get('sni','')}#{name}"
+        if p['type'] == 'vless':
+            base = f"vless://{p['uuid']}@{s}:{prt}?encryption=none&security=reality"
+            if p.get('reality'):
+                base += f"&pbk={p['reality']['pbk']}&sid={p['reality']['sid']}"
+            return f"{base}&sni={p.get('sni','')}#{name}"
+        if p['type'] == 'socks5':
+            return f"socks5://{p['password']}@{s}:{prt}#{name}"
+    except: return None
 
-if __name__ == "__main__":
+def main():
     urls = []
     if os.path.exists(SOURCE_FILE):
         with open(SOURCE_FILE, 'r', encoding='utf-8') as f:
             urls = re.findall(r'https?://[^\s\'"\[\],]+', f.read())
-    unique_proxies = {}
+    
+    unique_nodes = {}
     for url in urls:
         for node in parse_remote(url.strip()):
-            s, p, t = node.get('server'), node.get('port'), node.get('type')
-            if s and p and t:
-                key = (str(s).lower(), int(p), str(t).lower())
-                if key not in unique_proxies: unique_proxies[key] = node
-    with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
-        final_nodes = [r for r in executor.map(process_node, list(unique_proxies.values())) if r]
+            key = (node['server'], node['port'], node['type'])
+            if key not in unique_nodes: unique_nodes[key] = node
+
+    final_nodes = list(unique_nodes.values())
+
+    # 导出 Clash 订阅
     if os.path.exists(TEMPLATE_FILE):
         with open(TEMPLATE_FILE, 'r', encoding='utf-8') as f:
             tpl = yaml.safe_load(f)
         tpl['proxies'] = final_nodes
-        all_n = [n['name'] for n in final_nodes]
+        # 自动填充所有组
+        p_names = [n['name'] for n in final_nodes]
         for g in tpl.get('proxy-groups', []):
-            if g['name'] in ['🚀 节点选择', '⚡ 自动选择']:
-                g['proxies'] = all_n if g['name'] == '⚡ 自动选择' else g['proxies'] + all_n
-        with open(f"{OUTPUT_DIR}/clash_config.yaml", 'w', encoding='utf-8') as f:
+            if 'proxies' in g: g['proxies'].extend(p_names)
+        with open(f"{OUTPUT_DIR}/clash.yaml", 'w', encoding='utf-8') as f:
             yaml.dump(tpl, f, sort_keys=False, allow_unicode=True)
+
+    # 导出 Base64 订阅
     links = [to_link(n) for n in final_nodes if to_link(n)]
-    with open(f"{OUTPUT_DIR}/node_links.txt", 'w', encoding='utf-8') as f:
-        f.write("\n".join(links))
-    print(f"🎉 任务结束! 共解析: {len(final_nodes)} 个节点")
+    with open(f"{OUTPUT_DIR}/sub.txt", 'w', encoding='utf-8') as f:
+        f.write(base64.b64encode("\n".join(links).encode()).decode())
+    
+    print(f"✅ 任务完成! 抓取节点: {len(final_nodes)}")
+
+if __name__ == "__main__":
+    main()
