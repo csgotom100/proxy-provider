@@ -6,71 +6,68 @@ os.makedirs(OUT_DIR, exist_ok=True)
 ctx = ssl._create_unverified_context()
 
 def handle_vless(d):
+    """严格按照提供的 JSON 结构解析 VLESS/Reality"""
     try:
-        # 1. 基础字段提取 (适配 sing-box/xray 不同字段名)
+        # 基础字段提取
         s = d.get('server') or d.get('add')
         p = d.get('server_port') or d.get('port')
         u = d.get('uuid') or d.get('id')
-        
-        # 处理嵌套在 vnext 中的情况 (xray 风格)
-        if not s and 'vnext' in d.get('settings', {}):
-            v = d['settings']['vnext'][0]
-            s, p, u = v.get('address'), v.get('port'), v['users'][0].get('id')
-            
-        if not (s and u): return None
+        if not (s and u and p): return None
 
-        # 2. 传输层与安全层初始化
+        # 传输层
         net = d.get('transport', {}).get('type') or d.get('net', 'tcp')
-        sec = 'none'
-        sn, pbk, sid, fp = None, None, None, None
+        sec, sn, pbk, sid, fp = 'none', None, None, None, None
 
-        # 3. 严格解析 sing-box 风格的 TLS/Reality 结构
+        # 适配 sing-box 风格
         tls = d.get('tls', {})
-        if tls.get('enabled') or d.get('security') in ['tls', 'reality']:
+        if tls.get('enabled'):
             sec = 'tls'
-            sn = tls.get('server_name') or d.get('sni')
-            
-            # 解析 sing-box 风格的指纹
+            sn = tls.get('server_name')
             fp = tls.get('utls', {}).get('fingerprint')
-            
-            # 解析 sing-box 风格的 Reality
             ry = tls.get('reality', {})
             if ry.get('enabled'):
                 sec = 'reality'
                 pbk = ry.get('public_key')
                 sid = ry.get('short_id')
 
-        # 4. 严格解析 xray 风格的 streamSettings
+        # 适配 xray 风格 (作为补充)
         ss = d.get('streamSettings', {})
-        if not sn: # 如果 sing-box 风格没抓到，尝试解析 xray 风格
+        if ss:
             net = ss.get('network') or net
             sec = ss.get('security') or sec
-            rl = ss.get('realitySettings') or d.get('reality')
+            rl = ss.get('realitySettings')
             if rl:
                 sn = rl.get('serverName') or sn
                 pbk = rl.get('publicKey') or pbk
                 sid = rl.get('shortId') or sid
                 fp = rl.get('fingerprint') or fp
 
-        return {
-            "s": str(s), "p": int(p), "u": str(u), "t": "vless",
-            "net": net, "sec": sec, "sn": sn, "pbk": pbk, "sid": sid, "fp": fp
-        }
+        return {"s":str(s),"p":int(p),"u":str(u),"t":"vless","net":net,"sec":sec,"sn":sn,"pbk":pbk,"sid":sid,"fp":fp}
     except: return None
 
 def handle_hy2(d):
+    """修复 Hysteria2 解析，确保不漏掉独立配置"""
     try:
-        sr, u = str(d.get('server','')), d.get('auth') or d.get('auth_str') or d.get('password')
-        if not sr or not u or d.get('protocol')=='freedom': return None
-        h = sr.split(':')[0].replace('[','').replace(']','')
-        pt = re.findall(r'\d+', sr.split(':')[1])[0] if ':' in sr else 443
-        return {"s":h,"p":int(pt),"u":str(u),"t":"hysteria2","sn":d.get('sni') or d.get('server_name')}
+        if d.get('type') != 'hysteria2' and d.get('protocol') != 'hysteria2': return None
+        s = d.get('server') or d.get('add')
+        p = d.get('server_port') or d.get('port')
+        u = d.get('auth') or d.get('password') or d.get('auth_str')
+        if not (s and u): return None
+        
+        # 处理 server 字段带端口的情况
+        host = str(s).split(':')[0].replace('[','').replace(']','')
+        port = p or (s.split(':')[1] if ':' in str(s) else 443)
+        return {"s":host,"p":int(port),"u":str(u),"t":"hysteria2","sn":d.get('tls',{}).get('server_name') or d.get('sni')}
     except: return None
 
 def handle_naive(d):
+    """NaiveProxy 专用匹配逻辑，不干扰其他协议"""
     try:
-        m = re.search(r'https://([^:]+):([^@]+)@([^:]+):(\d+)', d.get('proxy',''))
-        if m: return {"u":m.group(1),"pw":m.group(2),"s":m.group(3),"p":int(m.group(4)),"t":"naive","sn":m.group(3)}
+        proxy_str = d.get('proxy', '')
+        if 'https://' in proxy_str:
+            m = re.search(r'https://([^:]+):([^@]+)@([^:]+):(\d+)', proxy_str)
+            if m:
+                return {"u":m.group(1),"pw":m.group(2),"s":m.group(3),"p":int(m.group(4)),"t":"naive","sn":m.group(3)}
     except: return None
 
 def find_dicts(obj):
@@ -93,6 +90,7 @@ def main():
                 raw = resp.read().decode('utf-8', errors='ignore')
                 data = json.loads(raw) if '{' in raw else yaml.safe_load(raw)
                 for d in find_dicts(data):
+                    # 各协议解析器完全独立执行
                     n = handle_vless(d) or handle_hy2(d) or handle_naive(d)
                     if n: nodes.append(n)
         except: continue
@@ -114,13 +112,12 @@ def main():
                 if n['fp']: px["client-fingerprint"] = n['fp']
             if n['sec'] == 'reality' and n['pbk']:
                 px["reality-opts"] = {"public-key": n['pbk'], "short-id": n['sid'] or ""}
-            
-            # 严格按照你验证通过的链接格式生成
-            link = f"vless://{n['u']}@{n['s']}:{n['p']}?encryption=none&security={n['sec']}&type={n['net']}"
-            if n['sn']: link += f"&sni={n['sn']}"
-            if n['fp']: link += f"&fp={n['fp']}"
-            if n['pbk']: link += f"&pbk={n['pbk']}&sid={n['sid'] or ''}"
-            v2_links.append(f"{link}#{nm}")
+            # 生成你验证通过的链接格式
+            l = f"vless://{n['u']}@{n['s']}:{n['p']}?encryption=none&security={n['sec']}&type={n['net']}"
+            if n['sn']: l += f"&sni={n['sn']}"; 
+            if n['fp']: l += f"&fp={n['fp']}";
+            if n['pbk']: l += f"&pbk={n['pbk']}&sid={n['sid'] or ''}"
+            v2_links.append(f"{l}#{nm}")
         
         elif n['t'] == 'hysteria2':
             px.update({"type":"hysteria2","password":n['u'],"sni":n['sn']})
@@ -132,10 +129,11 @@ def main():
 
         clash_px.append(px)
 
+    # 保持最简洁的 Clash 规则，防止报错
     conf = {"proxies": clash_px, "proxy-groups": [{"name": "🚀 节点选择", "type": "select", "proxies": ["⚡ 自动选择"] + [p['name'] for p in clash_px] + ["DIRECT"]}, {"name": "⚡ 自动选择", "type": "url-test", "proxies": [p['name'] for p in clash_px], "url": "http://www.gstatic.com/generate_204", "interval": 300}], "rules": ["MATCH,🚀 节点选择"]}
     with open(f"{OUT_DIR}/clash.yaml",'w',encoding='utf-8') as f: yaml.dump(conf, f, allow_unicode=True, sort_keys=False)
     with open(f"{OUT_DIR}/node.txt",'w',encoding='utf-8') as f: f.write("\n".join(v2_links))
     with open(f"{OUT_DIR}/sub.txt",'w',encoding='utf-8') as f: f.write(base64.b64encode("\n".join(v2_links).encode()).decode())
-    print(f"✅ Success! VLESS (Reality): {len([x for x in uniq if x['t']=='vless' and x['sec']=='reality'])}")
+    print(f"✅ 完成! Naive:{len([x for x in uniq if x['t']=='naive'])} | HY2:{len([x for x in uniq if x['t']=='hysteria2'])} | VLESS:{len([x for x in uniq if x['t']=='vless'])}")
 
 if __name__ == "__main__": main()
