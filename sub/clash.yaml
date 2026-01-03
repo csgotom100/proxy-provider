@@ -5,21 +5,21 @@ proxies:
   skip-cert-verify: true
   type: hysteria2
   password: dongtaiwang.com
-  sni: apple.com
+  sni: null
 - name: 02_HYSTERIA2_146
   server: 62.210.124.146
   port: 22000
   skip-cert-verify: true
   type: hysteria2
   password: dongtaiwang.com
-  sni: apple.com
+  sni: null
 - name: 03_HYSTERIA2_63
   server: 51.158.194.63
   port: 32952
   skip-cert-verify: true
   type: hysteria2
   password: dongtaiwang.com
-  sni: apple.com
+  sni: null
 - name: 04_HYSTERIA2_48
   server: 157.254.223.48
   port: 45889
@@ -53,64 +53,64 @@ proxies:
   skip-cert-verify: true
   type: vless
   uuid: a1f699e4-d7b7-4cdc-8414-1105e08fe4c5
-  tls: true
   udp: true
-  servername: www.pixiv.co.jp
   network: xhttp
+  tls: true
+  servername: www.pixiv.co.jp
   client-fingerprint: chrome
   reality-opts:
     public-key: BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic
     short-id: ea22dff3025e4ff8
+  xhttp-opts:
+    path: /github.com/Alvin9999
 - name: 08_VLESS_230
   server: 89.144.35.230
   port: 54582
   skip-cert-verify: true
   type: vless
   uuid: 5cfc52bc-e701-4160-89df-930a0c040576
-  tls: true
   udp: true
-  servername: apple.com
   network: xhttp
+  tls: true
+  servername: apple.com
   client-fingerprint: chrome
   reality-opts:
     public-key: kfw5DgkyKiovC3dzb-o2PUYnZPnbYvbx2IwERUv9czY
     short-id: 225e2cc8
+  xhttp-opts:
+    path: 5cfc52bc-e701-4160-89df-930a0c040576-xh
 - name: 09_VLESS_2001:bc8:32d7:14f::6
   server: 2001:bc8:32d7:14f::6
   port: 60011
   skip-cert-verify: true
   type: vless
   uuid: a1f699e4-d7b7-4cdc-8414-1105e08fe4c5
-  tls: true
   udp: true
-  servername: www.pixiv.co.jp
   network: xhttp
+  tls: true
+  servername: www.pixiv.co.jp
   client-fingerprint: chrome
   reality-opts:
     public-key: BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic
     short-id: ea22dff3025e4ff8
+  xhttp-opts:
+    path: /github.com/Alvin9999
 - name: 10_VLESS_44
   server: 157.254.223.44
   port: 18959
   skip-cert-verify: true
   type: vless
   uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
-  tls: true
   udp: true
-  servername: itunes.apple.com
   network: tcp
-  client-fingerprint: chrome
 - name: 11_VLESS_232
   server: 89.144.35.232
   port: 15531
   skip-cert-verify: true
   type: vless
   uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
-  tls: true
   udp: true
-  servername: itunes.apple.com
   network: tcp
-  client-fingerprint: chrome
 proxy-groups:
 - name: 🚀 节点选择
   type: select
@@ -144,17 +144,5 @@ proxy-groups:
   - 11_VLESS_232
   url: http://www.gstatic.com/generate_204
   interval: 300
-- name: 🌍 全球直连
-  type: select
-  proxies:
-  - DIRECT
-  - 🚀 节点选择
-- name: 🐟 漏网之鱼
-  type: select
-  proxies:
-  - 🚀 节点选择
-  - DIRECT
 rules:
-- GEOIP,LAN,DIRECT
-- GEOIP,CN,🌍 全球直连
-- MATCH,🐟 漏网之鱼
+- MATCH,🚀 节点选择
