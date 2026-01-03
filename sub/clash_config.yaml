@@ -19,7 +19,7 @@ dns:
   - 8.8.8.8
   - 1.1.1.1
 proxies:
-- name: '[未知] JUICITY_157.254.223.48 [0ms] (18:15)'
+- name: '[未知] JUICITY_157.254.223.48 [0ms] (18:18)'
   type: juicity
   server: 157.254.223.48
   port: 45889
@@ -29,7 +29,7 @@ proxies:
   tls-fragment: 10-30,5-10
   tfo: true
   _geo: 未知
-- name: '[美国] VLESS_157.254.223.44 [20ms] (18:15)'
+- name: '[美国] VLESS_157.254.223.44 [24ms] (18:18)'
   type: vless
   server: 157.254.223.44
   port: 18959
@@ -52,8 +52,8 @@ proxy-groups:
   - 🇸🇬 新加坡节点
   - 🌍 剩余地区
   - DIRECT
-  - '[未知] JUICITY_157.254.223.48 [0ms] (18:15)'
-  - '[美国] VLESS_157.254.223.44 [20ms] (18:15)'
+  - '[未知] JUICITY_157.254.223.48 [0ms] (18:18)'
+  - '[美国] VLESS_157.254.223.44 [24ms] (18:18)'
 - name: 📺 国际流媒体
   type: select
   proxies:
@@ -85,15 +85,15 @@ proxy-groups:
   interval: 300
   tolerance: 50
   proxies:
-  - '[未知] JUICITY_157.254.223.48 [0ms] (18:15)'
-  - '[美国] VLESS_157.254.223.44 [20ms] (18:15)'
+  - '[未知] JUICITY_157.254.223.48 [0ms] (18:18)'
+  - '[美国] VLESS_157.254.223.44 [24ms] (18:18)'
 - name: 🇭🇰 香港节点
   type: select
   proxies: []
 - name: 🇺🇸 美国节点
   type: select
   proxies:
-  - '[美国] VLESS_157.254.223.44 [20ms] (18:15)'
+  - '[美国] VLESS_157.254.223.44 [24ms] (18:18)'
 - name: 🇯🇵 日本节点
   type: select
   proxies: []
@@ -103,7 +103,7 @@ proxy-groups:
 - name: 🌍 剩余地区
   type: select
   proxies:
-  - '[未知] JUICITY_157.254.223.48 [0ms] (18:15)'
+  - '[未知] JUICITY_157.254.223.48 [0ms] (18:18)'
 rules:
 - DOMAIN-KEYWORD,adserver,REJECT
 - DOMAIN-SUFFIX,googleadservices.com,REJECT

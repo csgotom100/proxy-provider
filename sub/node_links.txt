@@ -1,1 +1,2 @@
-vless://d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa@157.254.223.44:18959?encryption=none&security=tls&sni=itunes.apple.com#%5B%E7%BE%8E%E5%9B%BD%5D%20VLESS_157.254.223.44%20%5B20ms%5D%20%2818%3A15%29
+juicity://abbf6900-2bfb-4019-89e4-4875e831cea8@157.254.223.48:45889?sni=us3.193919.xyz#%5B%E6%9C%AA%E7%9F%A5%5D%20JUICITY_157.254.223.48%20%5B0ms%5D%20%2818%3A18%29
+vless://d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa@157.254.223.44:18959?encryption=none&security=tls&sni=itunes.apple.com#%5B%E7%BE%8E%E5%9B%BD%5D%20VLESS_157.254.223.44%20%5B24ms%5D%20%2818%3A18%29
