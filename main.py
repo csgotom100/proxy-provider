@@ -22,40 +22,12 @@ def get_location(ip):
     except: return "未知"
 
 def decode_base64(data):
-    """通用的 Base64 解码，处理填充问题"""
-    data = data.replace('-', '+').replace('_', '/')
-    missing_padding = len(data) % 4
-    if missing_padding: data += '=' * (4 - missing_padding)
     try:
+        data = data.replace('-', '+').replace('_', '/')
+        missing_padding = len(data) % 4
+        if missing_padding: data += '=' * (4 - missing_padding)
         return base64.b64decode(data).decode('utf-8', errors='ignore')
     except: return ""
-
-def parse_uri(uri):
-    """解析 ss:// vless:// vmess:// 等链接"""
-    try:
-        if uri.startswith('ss://'):
-            # 处理 ss://base64(method:pass)@ip:port#name
-            content = uri[5:].split('#')[0]
-            if '@' in content:
-                user_info, server_info = content.split('@')
-                method_pass = decode_base64(user_info)
-                method, password = method_pass.split(':')
-                server, port = server_info.split(':')
-                return {"type": "ss", "server": server, "port": int(port), "cipher": method, "password": password}
-        
-        elif uri.startswith('vless://'):
-            # vless://uuid@ip:port?params#name
-            pattern = r'vless://(.*)@(.*):(\d+)\?(.*)#(.*)'
-            match = re.match(pattern, uri)
-            if match:
-                uuid, srv, prt, params, name = match.groups()
-                query = urllib.parse.parse_qs(params)
-                node = {"type": "vless", "server": srv, "port": int(prt), "uuid": uuid, "name": urllib.parse.unquote(name)}
-                if 'sni' in query: node['sni'] = query['sni'][0]
-                if 'pbk' in query: node['reality-opts'] = {"public-key": query['pbk'][0], "short-id": query.get('sid', [''])[0]}
-                return node
-    except: pass
-    return None
 
 def extract_all_dicts(obj):
     res = []
@@ -73,83 +45,122 @@ def parse_remote(url):
         with urllib.request.urlopen(req, timeout=12) as res:
             content = res.read().decode('utf-8', errors='ignore').strip()
             
-            # 1. 尝试识别为 Base64 订阅链接 (如 https://.../sub?clash=1)
-            if not (content.startswith('{') or content.startswith('proxies') or content.startswith('outbounds')):
+            # --- 1. 处理 Base64 订阅内容 ---
+            if not (content.startswith('{') or "proxies" in content or "outbounds" in content):
                 decoded = decode_base64(content)
                 if decoded:
                     for line in decoded.splitlines():
-                        n = parse_uri(line.strip())
-                        if n: nodes.append(n)
+                        if "://" in line: nodes.append({"raw_uri": line.strip()})
             
-            # 2. 尝试识别为 JSON/YAML
+            # --- 2. 处理 JSON/YAML 结构化内容 ---
             data = json.loads(content) if (content.startswith('{') or content.startswith('[')) else yaml.safe_load(content)
             if data:
                 for item in extract_all_dicts(data):
-                    srv = item.get('server') or item.get('add') or item.get('address')
-                    prt = item.get('port') or item.get('server_port')
-                    if not srv or not prt: continue
+                    # 寻找服务器
+                    srv = item.get('server') or item.get('add') or item.get('address') or item.get('ipAddress')
+                    # 寻找端口 (增加更多变体)
+                    prt = item.get('port') or item.get('server_port') or item.get('listen_port') or item.get('port_num')
+                    if not srv or not prt or str(srv).startswith('127.'): continue
+
+                    # 识别协议
+                    p_type = str(item.get('type', '')).lower()
+                    secret = item.get('password') or item.get('uuid') or item.get('auth') or item.get('id') or item.get('auth-str')
                     
-                    ntype = str(item.get('type', '')).lower()
-                    if not ntype:
-                        if 'auth' in item: ntype = 'hysteria2'
-                        elif 'uuid' in item: ntype = 'vless'
-                        else: continue
-                    
-                    node = {"server": str(srv), "port": int(str(prt).split(',')[0]), "type": ntype}
-                    # 密钥填充
-                    secret = item.get('password') or item.get('uuid') or item.get('auth') or item.get('id')
+                    if 'auth' in item or 'hy2' in p_type: ntype = 'hysteria2'
+                    elif 'uuid' in item or 'vless' in p_type or 'id' in item: ntype = 'vless'
+                    elif 'cipher' in item or 'method' in item: ntype = 'ss'
+                    elif 'socks' in p_type: ntype = 'socks5'
+                    else: continue
+
+                    if not secret: continue
+
+                    node = {
+                        "server": str(srv),
+                        "port": int(str(prt).split(',')[0].split('-')[0]),
+                        "type": ntype,
+                        "sni": item.get('sni') or item.get('server_name') or item.get('serverName'),
+                        "skip-cert-verify": True
+                    }
                     if ntype == 'vless': node["uuid"] = secret
                     else: node["password"] = secret
-                    
-                    # Reality 补充
-                    ry = item.get('reality') or item.get('reality-opts')
-                    if ry: node["reality-opts"] = {"public-key": ry.get('public-key') or ry.get('publicKey'), "short-id": ry.get('short-id') or ry.get('shortId')}
+
+                    # Reality
+                    ry = item.get('reality') or item.get('reality-opts') or item.get('tls', {}).get('reality')
+                    if ry and isinstance(ry, dict):
+                        node["reality-opts"] = {
+                            "public-key": ry.get('public-key') or ry.get('publicKey') or ry.get('public_key'),
+                            "short-id": ry.get('short-id') or ry.get('shortId') or ry.get('short_id')
+                        }
                     nodes.append(node)
     except: pass
     return nodes
 
+def to_link(p):
+    """根据字典生成 URI 链接"""
+    if "raw_uri" in p: return p["raw_uri"]
+    try:
+        name = urllib.parse.quote(p.get('name', 'Proxy'))
+        s, prt = p['server'], p['port']
+        if p['type'] == 'hysteria2':
+            return f"hysteria2://{p['password']}@{s}:{prt}?insecure=1&sni={p.get('sni','')}#{name}"
+        if p['type'] == 'vless':
+            link = f"vless://{p['uuid']}@{s}:{prt}?encryption=none&security=reality&sni={p.get('sni','')}"
+            if p.get('reality-opts'):
+                link += f"&pbk={p['reality-opts']['public-key']}&sid={p['reality-opts']['short-id']}"
+            return f"{link}#{name}"
+        if p['type'] == 'ss':
+            return f"ss://{p['server']}:{p['port']}#{name}"
+    except: return None
+
 def main():
-    # 扩展抓取源：增加 Alvin9999 的 Base64 订阅地址
+    # 核心源列表
     urls = [
-        "https://fastly.jsdelivr.net/gh/Alvin9999/PAC@latest/backup/img/1/2/ipp/clash.meta2/1/config.yaml",
-        "https://raw.githubusercontent.com/Alvin9999/PAC/master/backup/img/1/2/ipp/vless/1/config.json",
-        # 你可以添加更多的纯文本/Base64 订阅链接到这里
+        "https://www.gitlabip.xyz/Alvin9999/PAC/refs/heads/master/backup/img/1/2/ipp/clash.meta2/1/config.yaml",
+        "https://www.gitlabip.xyz/Alvin9999/PAC/refs/heads/master/backup/img/1/2/ipp/singbox/1/config.json",
+        "https://gitlab.com/free9999/ipupdate/-/raw/master/backup/img/1/2/ipp/hysteria2/1/config.json",
     ]
-    
     if os.path.exists(SOURCE_FILE):
         with open(SOURCE_FILE, 'r') as f:
             urls.extend(re.findall(r'https?://[^\s\'"\[\],]+', f.read()))
 
-    all_raw_nodes = []
+    all_raw = []
     with ThreadPoolExecutor(max_workers=MAX_THREADS) as exe:
         for nodes in exe.map(parse_remote, urls):
-            all_raw_nodes.extend(nodes)
+            all_raw.extend(nodes)
 
-    # 去重并进行地域识别
-    unique_list = []
+    # 去重 & 地域命名
+    final_nodes = []
     seen = set()
-    print("正在进行地域识别与去重...")
-    for n in all_raw_nodes:
-        key = (n['server'], n['port'])
-        if key not in seen:
-            loc = get_location(n['server'])
-            n['name'] = f"[{loc}] {n['type'].upper()}_{str(n['server'])[-4:]}"
-            unique_list.append(n)
-            seen.add(key)
+    for n in all_raw:
+        # 如果是 URI 格式则特殊处理去重
+        srv_key = n.get('server') or n.get('raw_uri')
+        if srv_key not in seen:
+            if 'server' in n:
+                loc = get_location(n['server'])
+                n['name'] = f"[{loc}] {n['type'].upper()}_{str(n['server'])[-4:]}"
+            final_nodes.append(n)
+            seen.add(srv_key)
 
+    # --- 输出 1: Clash YAML ---
+    clash_nodes = [n for n in final_nodes if 'server' in n]
     clash_config = {
-        "proxies": unique_list,
-        "proxy-groups": [
-            {"name": "🚀 自动选择", "type": "url-test", "proxies": [n['name'] for n in unique_list], "url": "http://www.gstatic.com/generate_204", "interval": 300},
-            {"name": "🔰 节点切换", "type": "select", "proxies": ["🚀 自动选择"] + [n['name'] for n in unique_list]}
-        ],
-        "rules": ["MATCH,🔰 节点切换"]
+        "proxies": clash_nodes,
+        "proxy-groups": [{"name": "PROXY", "type": "select", "proxies": [n['name'] for n in clash_nodes]}],
+        "rules": ["MATCH,PROXY"]
     }
-
     with open(f"{OUTPUT_DIR}/clash.yaml", 'w', encoding='utf-8') as f:
         yaml.dump(clash_config, f, sort_keys=False, allow_unicode=True)
+
+    # --- 输出 2: 明文链接 (node_links.txt) ---
+    links = [to_link(n) for n in final_nodes if to_link(n)]
+    with open(f"{OUTPUT_DIR}/node_links.txt", 'w', encoding='utf-8') as f:
+        f.write("\n".join(links))
+
+    # --- 输出 3: Base64 订阅 (sub.txt) ---
+    with open(f"{OUTPUT_DIR}/sub.txt", 'w', encoding='utf-8') as f:
+        f.write(base64.b64encode("\n".join(links).encode()).decode())
     
-    print(f"✅ 完成! 当前总节点数: {len(unique_list)}")
+    print(f"✅ 任务完成! 抓取节点: {len(final_nodes)}")
 
 if __name__ == "__main__":
     main()
