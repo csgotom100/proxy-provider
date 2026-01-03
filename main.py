@@ -6,18 +6,10 @@ warnings.filterwarnings("ignore")
 # --- 1. 配置源 ---
 FIXED_SOURCES = [
     "https://www.gitlabip.xyz/Alvin9999/PAC/refs/heads/master/backup/img/1/2/ipp/hysteria2/1/config.json",
-    "https://www.gitlabip.xyz/Alvin9999/PAC/refs/heads/master/backup/img/1/2/ipp/hysteria2/2/config.json",
-    "https://www.gitlabip.xyz/Alvin9999/PAC/refs/heads/master/backup/img/1/2/ipp/hysteria2/3/config.json",
-    "https://www.gitlabip.xyz/Alvin9999/PAC/refs/heads/master/backup/img/1/2/ipp/hysteria2/4/config.json",
-    "https://www.gitlabip.xyz/Alvin9999/PAC/refs/heads/master/backup/img/1/2/ipp/clash.meta2/1/config.yaml",
-    "https://www.gitlabip.xyz/Alvin9999/PAC/refs/heads/master/backup/img/1/2/ipp/clash.meta2/2/config.yaml",
-    "https://www.gitlabip.xyz/Alvin9999/PAC/refs/heads/master/backup/img/1/2/ipp/clash.meta2/3/config.yaml",
-    "https://fastly.jsdelivr.net/gh/Alvin9999/PAC@latest/backup/img/1/2/ipp/clash.meta2/4/config.yaml",
-    "https://gitlab.com/free9999/ipupdate/-/raw/master/backup/img/1/2/ip/singbox/2/config.json"
+    "https://www.gitlabip.xyz/Alvin9999/PAC/refs/heads/master/backup/img/1/2/ipp/clash.meta2/1/config.yaml"
 ]
-
 OUT_DIR = './sub'
-MANUAL_FILE = './urls/manual_json.txt' # 本地手动文件路径
+MANUAL_FILE = './urls/manual_json.txt'
 os.makedirs(OUT_DIR, exist_ok=True)
 ctx = ssl._create_unverified_context()
 
@@ -32,17 +24,40 @@ def get_geo(ip):
     except: return "🏳️"
 
 def get_node(item):
+    """全协议解析逻辑"""
     try:
         if not isinstance(item, dict): return None
+        # 1. 基础协议识别
+        t = str(item.get('type', '')).lower()
+        
+        # --- Juicity 解析 ---
+        if 'juicity' in t or 'juicity' in str(item.keys()):
+            s = item.get('server') or item.get('address')
+            p = item.get('port') or item.get('server_port')
+            u = item.get('uuid') or item.get('user_id')
+            if s and p and u:
+                return {"s": str(s), "p": int(p), "t": "juicity", "u": str(u), "sn": item.get('sni', '')}
+
+        # --- NaiveProxy 解析 ---
+        if 'proxy' in item and 'address' in item:
+            proxy_uri = item.get('proxy', '') # https://user:pass@host:port
+            if 'https://' in proxy_uri:
+                auth, addr = proxy_uri.replace('https://', '').split('@')
+                user, pwd = auth.split(':')
+                s, p = addr.split(':')
+                return {"s": s, "p": int(p), "t": "naive", "u": user, "pass": pwd, "sn": s}
+
+        # --- Hysteria2/VLESS 通用解析 ---
         s = item.get('server') or item.get('add') or item.get('address')
-        p = item.get('port') or item.get('server_port') or item.get('port_num')
+        p = item.get('port') or item.get('server_port')
         u = item.get('password') or item.get('uuid') or item.get('id') or item.get('auth')
         if not (s and p and u): return None
+        
         s, p = str(s).replace('[','').replace(']',''), int(str(p).split(',')[0].strip())
-        t = str(item.get('type', '')).lower()
         nt = 'hysteria2' if ('hy2' in t or 'hysteria2' in t or 'auth' in item) else 'vless'
         tls = item.get('tls', {}) if isinstance(item.get('tls'), dict) else {}
         sn = item.get('sni') or item.get('servername') or tls.get('server_name') or ""
+        
         node = {"s": s, "p": p, "t": nt, "u": str(u), "sn": sn}
         ry = item.get('reality-opts') or item.get('reality') or tls.get('reality') or {}
         if isinstance(ry, dict) and (ry.get('public-key') or ry.get('publicKey')):
@@ -53,27 +68,18 @@ def get_node(item):
 def ext_dicts(obj):
     res = []
     if isinstance(obj, dict):
-        res.append(obj)
-        for v in obj.values(): res.extend(ext_dicts(v))
+        res.append(obj); [res.extend(ext_dicts(v)) for v in obj.values()]
     elif isinstance(obj, list):
-        for i in obj: res.extend(ext_dicts(i))
+        [res.extend(ext_dicts(i)) for i in obj]
     return res
 
 def main():
-    raw_nodes = []
-    # 合并在线源和本地源
     all_urls = FIXED_SOURCES.copy()
     if os.path.exists(MANUAL_FILE):
-        print(f"检测到本地文件: {MANUAL_FILE}，正在读取...")
-        try:
-            with open(MANUAL_FILE, 'r', encoding='utf-8') as f:
-                # 提取文件中的所有 URL
-                found_urls = re.findall(r'https?://[^\s\'"\[\],]+', f.read())
-                all_urls.extend(found_urls)
-                print(f"从本地文件中提取了 {len(found_urls)} 个额外 URL")
-        except Exception as e:
-            print(f"读取本地文件失败: {e}")
+        with open(MANUAL_FILE, 'r', encoding='utf-8') as f:
+            all_urls.extend(re.findall(r'https?://[^\s\'"\[\],]+', f.read()))
 
+    raw_nodes = []
     for url in list(set(all_urls)):
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -81,39 +87,35 @@ def main():
                 raw = resp.read().decode('utf-8', errors='ignore')
                 data = json.loads(raw) if raw.startswith(('{','[')) else yaml.safe_load(raw)
                 for d in ext_dicts(data):
-                    node = get_node(d)
-                    if node: raw_nodes.append(node)
+                    n = get_node(d)
+                    if n: raw_nodes.append(n)
         except: continue
 
     uniq, seen = [], set()
     for n in raw_nodes:
-        key = (n['s'], n['p'], n['u'])
-        if key not in seen: uniq.append(n); seen.add(key)
+        k = (n['s'], n['p'], n['u'])
+        if k not in seen: uniq.append(n); seen.add(k)
 
-    clash_px, raw_links = [], []
+    clash_px = []
     bj_time = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M")
     
-    print(f"正在处理 {len(uniq)} 个节点...")
     for i, n in enumerate(uniq):
         flag = get_geo(n['s'])
         name = f"{flag} {n['t'].upper()}_{n['s'].split('.')[-1]}_{i+1}"
         px = {"name": name, "type": n['t'], "server": n['s'], "port": n['p'], "skip-cert-verify": True}
+        
         if n['t'] == 'hysteria2':
             px["password"], px["sni"] = n['u'], n['sn']
-        else:
+        elif n['t'] == 'juicity':
+            px.update({"uuid": n['u'], "sni": n['sn'], "conntrack": True})
+        elif n['t'] == 'naive':
+            px.update({"username": n['u'], "password": n['pass'], "sni": n['sn']})
+        elif n['t'] == 'vless':
             px.update({"uuid": n['u'], "tls": True, "servername": n['sn']})
             if "pbk" in n: px.update({"reality-opts": {"public-key": n['pbk'], "short-id": n['sid']}, "network": "tcp"})
-        clash_px.append(px)
         
-        from urllib.parse import quote
-        en = quote(name)
-        if n['t'] == 'hysteria2':
-            raw_links.append(f"hysteria2://{n['u']}@{n['s']}:{n['p']}?sni={n['sn']}&insecure=1#{en}")
-        else:
-            l = f"vless://{n['u']}@{n['s']}:{n['p']}?encryption=none&security=tls&sni={n['sn']}"
-            if "pbk" in n: l = l.replace("security=tls", "security=reality") + f"&fp=chrome&pbk={n['pbk']}&sid={n['sid']}"
-            raw_links.append(f"{l}#{en}")
-        if i % 10 == 0: time.sleep(0.5)
+        clash_px.append(px)
+        if i % 5 == 0: time.sleep(0.2)
 
     conf = {
         "proxies": clash_px,
@@ -128,11 +130,7 @@ def main():
     with open(f"{OUT_DIR}/clash.yaml", 'w', encoding='utf-8') as f:
         yaml.dump(conf, f, allow_unicode=True, sort_keys=False)
     
-    links = "\n".join(raw_links)
-    with open(f"{OUT_DIR}/node_links.txt", 'w', encoding='utf-8') as f: f.write(links)
-    with open(f"{OUT_DIR}/subscribe_base64.txt", 'w', encoding='utf-8') as f:
-        f.write(base64.b64encode(links.encode()).decode())
-    print(f"成功! 节点总数: {len(uniq)} | 北京时间: {bj_time}")
+    print(f"成功! 节点总数: {len(clash_px)} | 北京时间: {bj_time}")
 
 if __name__ == "__main__":
     main()
