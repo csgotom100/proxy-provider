@@ -47,21 +47,7 @@ proxies:
   tls: true
   sni: naive1.336892.xyz
   proxy-octet-stream: true
-- name: 🌐 MIERU_7_98.11
-  server: 45.221.98.11
-  port: 28866
-  skip-cert-verify: true
-  type: socks5
-  username: dongtaiwang.com
-  password: dongtaiwang.com
-- name: 🌐 MIERU_8_23.48
-  server: 157.254.223.48
-  port: 33990
-  skip-cert-verify: true
-  type: socks5
-  username: dongtaiwang.com
-  password: dongtaiwang.com
-- name: 🌐 SHADOWQUIC_9_23.43
+- name: 🌐 SHADOWQUIC_7_23.43
   server: 157.254.223.43
   port: 1443
   skip-cert-verify: true
@@ -70,7 +56,7 @@ proxies:
   password: dongtaiwang.com
   sni: www.yahoo.com
   congestion-control: bbr
-- name: 🌐 SHADOWQUIC_10_5.xyz
+- name: 🌐 SHADOWQUIC_8_5.xyz
   server: fan2.394615.xyz
   port: 1443
   skip-cert-verify: true
@@ -79,7 +65,7 @@ proxies:
   password: dongtaiwang.com
   sni: www.yahoo.com
   congestion-control: bbr
-- name: 🌐 VLESS_11_7.177
+- name: 🌐 VLESS_9_7.177
   server: 62.210.127.177
   port: 60011
   skip-cert-verify: true
@@ -92,7 +78,7 @@ proxies:
   reality-opts:
     public-key: BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic
     short-id: ea22dff3025e4ff8
-- name: 🌐 VLESS_12_5.230
+- name: 🌐 VLESS_10_5.230
   server: 89.144.35.230
   port: 54582
   skip-cert-verify: true
@@ -105,7 +91,7 @@ proxies:
   reality-opts:
     public-key: kfw5DgkyKiovC3dzb-o2PUYnZPnbYvbx2IwERUv9czY
     short-id: 225e2cc8
-- name: 🌐 VLESS_13_4f::6
+- name: 🌐 VLESS_11_4f::6
   server: 2001:bc8:32d7:14f::6
   port: 60011
   skip-cert-verify: true
@@ -118,7 +104,7 @@ proxies:
   reality-opts:
     public-key: BTCE_8R4FJ7wf9mR7PkONJyeihtHqi_TptjC20eMhic
     short-id: ea22dff3025e4ff8
-- name: 🌐 VLESS_14_23.44
+- name: 🌐 VLESS_12_23.44
   server: 157.254.223.44
   port: 18959
   skip-cert-verify: true
@@ -128,7 +114,7 @@ proxies:
   servername: www.apple.com
   network: tcp
   udp: true
-- name: 🌐 VLESS_15_5.232
+- name: 🌐 VLESS_13_5.232
   server: 89.144.35.232
   port: 15531
   skip-cert-verify: true
@@ -148,15 +134,13 @@ proxy-groups:
   - 🌐 HYSTERIA2_4_23.48
   - 🌐 NAIVE_5_9.xyz
   - 🌐 NAIVE_6_2.xyz
-  - 🌐 MIERU_7_98.11
-  - 🌐 MIERU_8_23.48
-  - 🌐 SHADOWQUIC_9_23.43
-  - 🌐 SHADOWQUIC_10_5.xyz
-  - 🌐 VLESS_11_7.177
-  - 🌐 VLESS_12_5.230
-  - 🌐 VLESS_13_4f::6
-  - 🌐 VLESS_14_23.44
-  - 🌐 VLESS_15_5.232
+  - 🌐 SHADOWQUIC_7_23.43
+  - 🌐 SHADOWQUIC_8_5.xyz
+  - 🌐 VLESS_9_7.177
+  - 🌐 VLESS_10_5.230
+  - 🌐 VLESS_11_4f::6
+  - 🌐 VLESS_12_23.44
+  - 🌐 VLESS_13_5.232
   url: http://www.gstatic.com/generate_204
   interval: 300
 - name: 🔰 🔰
@@ -169,14 +153,12 @@ proxy-groups:
   - 🌐 HYSTERIA2_4_23.48
   - 🌐 NAIVE_5_9.xyz
   - 🌐 NAIVE_6_2.xyz
-  - 🌐 MIERU_7_98.11
-  - 🌐 MIERU_8_23.48
-  - 🌐 SHADOWQUIC_9_23.43
-  - 🌐 SHADOWQUIC_10_5.xyz
-  - 🌐 VLESS_11_7.177
-  - 🌐 VLESS_12_5.230
-  - 🌐 VLESS_13_4f::6
-  - 🌐 VLESS_14_23.44
-  - 🌐 VLESS_15_5.232
+  - 🌐 SHADOWQUIC_7_23.43
+  - 🌐 SHADOWQUIC_8_5.xyz
+  - 🌐 VLESS_9_7.177
+  - 🌐 VLESS_10_5.230
+  - 🌐 VLESS_11_4f::6
+  - 🌐 VLESS_12_23.44
+  - 🌐 VLESS_13_5.232
 rules:
 - MATCH,🔰 🔰
