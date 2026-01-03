@@ -11,43 +11,42 @@ ctx = ssl._create_unverified_context()
 
 def parse_node(d):
     try:
-        # --- 1. NaiveProxy 逻辑 ---
-        if 'proxy' in d and 'https://' in str(d['proxy']):
-            m = re.search(r'https://([^:]+):([^@]+)@([^:]+):(\d+)', d['proxy'])
+        # --- 1. NaiveProxy 逻辑 (独立修复，不惊动其它) ---
+        # 只要存在 proxy 字段且包含 https://，直接完整提取
+        if 'proxy' in d and str(d['proxy']).startswith('https://'):
+            raw_proxy = d['proxy']
+            # 提取域名作为 server 用于去重和命名
+            m = re.search(r'@([^:]+):(\d+)', raw_proxy)
             if m:
-                return {"t": "naive", "u": m.group(1), "pw": m.group(2), "s": m.group(3), "p": int(m.group(4)), "sn": m.group(3)}
+                return {
+                    "t": "naive", 
+                    "raw": raw_proxy, 
+                    "s": m.group(1), 
+                    "p": int(m.group(2)),
+                    # 提取用户名和密码供 Clash 使用
+                    "auth": re.search(r'https://([^:]+):([^@]+)@', raw_proxy).groups()
+                }
 
-        # --- 2. Hysteria2 逻辑 (严格适配提供的 JSON) ---
-        # 识别特征：包含 bandwidth 或 quic 或 socks5 且 server 存在
+        # --- 2. Hysteria2 逻辑 (保持原样) ---
         if 'bandwidth' in d or 'quic' in d or str(d.get('type','')).lower() == 'hysteria2':
             s_raw = d.get('server') or d.get('add')
             if not s_raw: return None
-            
-            # 处理带端口范围的 server: "ip:port,port-port" -> 提取第一个端口
             s_part = str(s_raw).split(',')[0]
             host = s_part.split(':')[0].replace('[','').replace(']','')
             port = s_part.split(':')[1] if ':' in s_part else d.get('server_port', 443)
-            
             u = d.get('auth') or d.get('password') or d.get('auth_str')
-            
-            # 深入 tls 字典获取参数
             tls = d.get('tls', {})
             sni = tls.get('sni') or d.get('sni') or 'apple.com'
             is_insecure = 1 if tls.get('insecure') is True else 0
-            
-            return {
-                "t": "hysteria2", "s": host, "p": int(port), "u": str(u),
-                "sn": sni, "insecure": is_insecure
-            }
+            return {"t": "hysteria2", "s": host, "p": int(port), "u": str(u), "sn": sni, "insecure": is_insecure}
 
-        # --- 3. VLESS 逻辑 (适配 sing-box 风格) ---
+        # --- 3. VLESS 逻辑 (保持原样) ---
         ptype = str(d.get('type') or d.get('protocol') or '').lower()
         if 'vless' in ptype:
             s = d.get('server') or d.get('add')
             p = d.get('server_port') or d.get('port')
             u = d.get('uuid') or d.get('id')
             if not (s and u): return None
-            
             sec, sn, pbk, sid, fp = 'none', None, None, None, None
             tls = d.get('tls', {})
             if tls and tls.get('enabled'):
@@ -56,7 +55,6 @@ def parse_node(d):
                 ry = tls.get('reality', {})
                 if ry and ry.get('enabled'):
                     sec, pbk, sid = 'reality', ry.get('public_key'), ry.get('short_id')
-            
             ss = d.get('streamSettings', {})
             net = d.get('transport', {}).get('type') or ss.get('network') or d.get('net', 'tcp')
             if ss:
@@ -64,7 +62,6 @@ def parse_node(d):
                 rl = ss.get('realitySettings')
                 if rl:
                     sn, pbk, sid, fp = rl.get('serverName'), rl.get('publicKey'), rl.get('shortId'), rl.get('fingerprint')
-
             return {"t": "vless", "s": str(s), "p": int(p), "u": str(u), "net": net, "sec": sec, "sn": sn, "pbk": pbk, "sid": sid, "fp": fp}
             
     except: return None
@@ -96,22 +93,19 @@ def main():
 
     unique_nodes, seen = [], set()
     for n in all_nodes:
-        key = (n['s'], n['p'], n.get('u') or n.get('pw'))
+        key = (n['s'], n['p'], n.get('u', n.get('raw', '')))
         if key not in seen: unique_nodes.append(n); seen.add(key)
 
     clash_proxies, v2_links = [], []
     for i, n in enumerate(unique_nodes):
         node_name = f"{i+1:02d}_{n['t'].upper()}_{str(n['s']).split('.')[-1]}"
-        px = {"name": node_name, "server": n['s'], "port": n['p'], "skip-cert-verify": True}
         
         if n['t'] == 'vless':
-            px.update({"type": "vless", "uuid": n['u'], "udp": True, "network": n.get('net', 'tcp')})
-            if n['sec'] in ['tls', 'reality']:
-                px["tls"] = True
-                if n['sn']: px["servername"] = n['sn']
-                if n['fp']: px["client-fingerprint"] = n['fp']
-            if n['sec'] == 'reality' and n['pbk']:
-                px["reality-opts"] = {"public-key": n['pbk'], "short-id": n['sid'] or ""}
+            px = {"name": node_name, "type": "vless", "server": n['s'], "port": n['p'], "uuid": n['u'], "udp": True, "tls": True, "skip-cert-verify": True, "network": n.get('net', 'tcp')}
+            if n['sn']: px["servername"] = n['sn']
+            if n['fp']: px["client-fingerprint"] = n['fp']
+            if n['sec'] == 'reality' and n['pbk']: px["reality-opts"] = {"public-key": n['pbk'], "short-id": n['sid'] or ""}
+            clash_proxies.append(px)
             l = f"vless://{n['u']}@{n['s']}:{n['p']}?encryption=none&security={n['sec']}&type={n.get('net','tcp')}"
             if n['sn']: l += f"&sni={n['sn']}"
             if n['fp']: l += f"&fp={n['fp']}"
@@ -119,16 +113,18 @@ def main():
             v2_links.append(f"{l}#{node_name}")
         
         elif n['t'] == 'hysteria2':
-            # 严格按照正确链接格式生成
-            px.update({"type": "hysteria2", "password": n['u'], "sni": n['sn']})
-            link = f"hysteria2://{n['u']}@{n['s']}:{n['p']}?sni={n['sn']}&insecure={n['insecure']}&allowInsecure={n['insecure']}"
-            v2_links.append(f"{link}#{node_name}")
+            clash_proxies.append({"name": node_name, "type": "hysteria2", "server": n['s'], "port": n['p'], "password": n['u'], "sni": n['sn'], "skip-cert-verify": True})
+            v2_links.append(f"hysteria2://{n['u']}@{n['s']}:{n['p']}?sni={n['sn']}&insecure={n['insecure']}&allowInsecure={n['insecure']}#{node_name}")
         
         elif n['t'] == 'naive':
-            px.update({"type": "http", "username": n['u'], "password": n['pw'], "tls": True, "sni": n['sn'], "proxy-octet-stream": True})
-            v2_links.append(f"http://{n['u']}:{n['pw']}@{n['s']}:{n['p']}#{node_name}")
-
-        clash_proxies.append(px)
+            # Clash 中 Naive 表现为 https 类型的 http 代理
+            clash_proxies.append({
+                "name": node_name, "type": "http", "server": n['s'], "port": n['p'], 
+                "username": n['auth'][0], "password": n['auth'][1], 
+                "tls": True, "sni": n['s'], "skip-cert-verify": True
+            })
+            # node.txt 严格保持你要求的原始格式
+            v2_links.append(f"{n['raw']}#{node_name}")
 
     if not clash_proxies: return
 
