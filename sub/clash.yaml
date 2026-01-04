@@ -12,7 +12,7 @@ proxies:
   reality-opts:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
-- name: 04_VLESS_2
+- name: 04_VLESS_v6
   type: vless
   server: 2001:bc8:32d7:181::2
   port: 17401
@@ -25,7 +25,7 @@ proxies:
   reality-opts:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
-- name: 05_VLESS_3
+- name: 05_VLESS_v6
   type: vless
   server: 2001:bc8:32d7:181::3
   port: 17401
@@ -44,15 +44,15 @@ proxy-groups:
   proxies:
   - ⚡ 自动选择
   - 03_VLESS_13
-  - 04_VLESS_2
-  - 05_VLESS_3
+  - 04_VLESS_v6
+  - 05_VLESS_v6
   - DIRECT
 - name: ⚡ 自动选择
   type: url-test
   proxies:
   - 03_VLESS_13
-  - 04_VLESS_2
-  - 05_VLESS_3
+  - 04_VLESS_v6
+  - 05_VLESS_v6
   url: http://www.gstatic.com/generate_204
   interval: 300
 rules:
