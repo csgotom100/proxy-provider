@@ -9,35 +9,34 @@ ctx = ssl._create_unverified_context()
 
 def parse_node(d):
     try:
-        # --- 1. NaiveProxy ---
-        if 'proxy' in d and str(d['proxy']).startswith('https://'):
-            p_str = d['proxy']
-            m = re.search(r'@([^:]+):(\d+)', p_str)
-            if m:
-                u_p = re.search(r'https://([^:]+):([^@]+)@', p_str).groups()
-                return {"t": "naive", "raw": p_str, "s": m.group(1), "p": int(m.group(2)), "auth": u_p}
-
-        # --- 2. Hysteria2 (增强识别逻辑) ---
+        # 获取类型并标准化
         ptype = str(d.get('type') or d.get('protocol') or '').lower()
-        if 'hysteria2' in ptype or 'hy2' in ptype:
-            s = d.get('server') or d.get('add')
-            if not s: return None
-            host = str(s).replace('[','').replace(']','')
-            u = d.get('auth') or d.get('password') or d.get('auth_str')
+        
+        # --- 1. Hysteria2 (精准匹配你贴出的格式) ---
+        if 'hysteria2' in ptype:
+            # 优先从 'server' 字段获取地址，如果没有则看 'add'
+            host = d.get('server') or d.get('add')
+            if not host: return None
+            
+            # 提取密码：Clash 用 password, sing-box 用 auth
+            pw = d.get('password') or d.get('auth') or d.get('auth_str')
+            if not pw: return None
+            
             return {
-                "t": "hysteria2", "s": host, "p": int(d.get('port', 443)), "u": str(u), 
+                "t": "hysteria2", 
+                "s": str(host).replace('[','').replace(']',''), 
+                "p": int(d.get('port', 443)), 
+                "u": str(pw), 
                 "sn": d.get('sni') or d.get('servername'), 
                 "insecure": 1 if (d.get('skip-cert-verify') or d.get('insecure')) else 0
             }
 
-        # --- 3. VLESS ---
+        # --- 2. VLESS ---
         if 'vless' in ptype:
             s, p, u = d.get('server') or d.get('add'), d.get('port'), d.get('uuid') or d.get('id')
             if not (s and u): return None
             
-            p_list = {"encryption": d.get("encryption", "none"), "flow": d.get("flow")}
             sec, sn, pbk, sid, fp, net = 'none', None, None, None, None, d.get('network', 'tcp')
-            
             ro = d.get('reality-opts', {})
             if ro:
                 sec = 'reality'
@@ -48,16 +47,21 @@ def parse_node(d):
             fp = d.get('client-fingerprint') or d.get('fp')
             if d.get('tls') is True and sec == 'none': sec = 'tls'
 
-            params = {
-                "security": sec, "sni": sn, "fp": fp, "pbk": pbk, "sid": sid, "type": net,
-                "flow": d.get("flow")
-            }
+            params = {"security": sec, "sni": sn, "fp": fp, "pbk": pbk, "sid": sid, "type": net, "flow": d.get("flow")}
             return {"t":"vless","s":str(s),"p":int(p),"u":str(u),"params": {k: v for k, v in params.items() if v}}
+
+        # --- 3. NaiveProxy ---
+        if 'proxy' in d and str(d['proxy']).startswith('https://'):
+            p_str = d['proxy']
+            m = re.search(r'@([^:]+):(\d+)', p_str)
+            if m: return {"t": "naive", "raw": p_str, "s": m.group(1), "p": int(m.group(2))}
+
     except: return None
 
 def find_dicts(obj):
     if isinstance(obj, dict):
         yield obj
+        # 如果是 Clash 配置文件，重点扫描 proxies 列表
         if 'proxies' in obj and isinstance(obj['proxies'], list):
             for item in obj['proxies']: yield from find_dicts(item)
         for v in obj.values(): yield from find_dicts(v)
@@ -68,17 +72,20 @@ def main():
     if not os.path.exists(MANUAL_FILE): return
     with open(MANUAL_FILE, 'r', encoding='utf-8') as f:
         content = f.read()
-        urls = re.findall(r'https?://[^\s\'"\[\],]+', content)
     
     nodes = []
-    # 优先解析 manual_json.txt 全文
+    # 核心：先尝试将 manual_json.txt 全文直接作为 YAML 解析 (处理你贴进去的 Clash 配置)
     try:
         data = yaml.safe_load(content)
-        for d in find_dicts(data):
-            n = parse_node(d)
-            if n: nodes.append(n)
-    except: pass
+        if data:
+            for d in find_dicts(data):
+                n = parse_node(d)
+                if n: nodes.append(n)
+    except Exception as e:
+        print(f"YAML Text Parse Skip: {e}")
 
+    # 再处理文件中包含的 URL
+    urls = re.findall(r'https?://[^\s\'"\[\],]+', content)
     for url in urls:
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -98,36 +105,28 @@ def main():
 
     clash_proxies, v2_links = [], []
     for i, n in enumerate(unique_nodes):
-        # 优化节点命名
-        host_display = n['s'].split('.')[-1] if '.' in n['s'] else 'v6'
-        nm = f"{i+1:02d}_{n['t'].upper()}_{host_display}"
+        host_tag = n['s'].split('.')[-1] if '.' in n['s'] else 'v6'
+        nm = f"{i+1:02d}_{n['t'].upper()}_{host_tag}"
         
-        if n['t'] == 'vless':
+        if n['t'] == 'hysteria2':
+            # 导出为 Clash 格式
+            clash_proxies.append({"name": nm, "type": "hysteria2", "server": n['s'], "port": n['p'], "password": n['u'], "sni": n.get('sn'), "skip-cert-verify": True})
+            # 导出为链接格式 (auth@server:port)
+            v2_links.append(f"hysteria2://{n['u']}@{n['s']}:{n['p']}?sni={n.get('sn','')}&insecure=1#{nm}")
+        elif n['t'] == 'vless':
             p = n['params']
             px = {"name": nm, "type": "vless", "server": n['s'], "port": n['p'], "uuid": n['u'], "tls": True, "skip-cert-verify": True, "network": p.get("type", "tcp")}
             if p.get("sni"): px["servername"] = p["sni"]
-            if p.get("fp"): px["client-fingerprint"] = p["fp"]
-            if p.get("flow"): px["flow"] = p["flow"]
             if p.get("security") == "reality": px["reality-opts"] = {"public-key": p.get("pbk"), "short-id": p.get("sid", "")}
             clash_proxies.append(px)
             query = "&".join([f"{k}={v}" for k, v in p.items() if v])
             v2_links.append(f"vless://{n['u']}@{n['s']}:{n['p']}?{query}#{nm}")
-        elif n['t'] == 'hysteria2':
-            clash_proxies.append({"name": nm, "type": "hysteria2", "server": n['s'], "port": n['p'], "password": n['u'], "sni": n.get('sn'), "skip-cert-verify": True})
-            v2_links.append(f"hysteria2://{n['u']}@{n['s']}:{n['p']}?sni={n.get('sn','')}&insecure=1#{nm}")
         elif n['t'] == 'naive':
             v2_links.append(f"{n['raw']}#{nm}")
 
     if not v2_links: return
     if clash_proxies:
-        conf = {
-            "proxies": clash_proxies,
-            "proxy-groups": [
-                {"name": "🚀 节点选择", "type": "select", "proxies": ["⚡ 自动选择"] + [px['name'] for px in clash_proxies] + ["DIRECT"]},
-                {"name": "⚡ 自动选择", "type": "url-test", "proxies": [px['name'] for px in clash_proxies], "url": "http://www.gstatic.com/generate_204", "interval": 300}
-            ],
-            "rules": ["MATCH,🚀 节点选择"]
-        }
+        conf = {"proxies": clash_proxies, "proxy-groups": [{"name": "🚀 节点选择", "type": "select", "proxies": ["⚡ 自动选择"] + [px['name'] for px in clash_proxies] + ["DIRECT"]}], "rules": ["MATCH,🚀 节点选择"]}
         with open(os.path.join(OUT_DIR, "clash.yaml"), 'w', encoding='utf-8') as f:
             yaml.dump(conf, f, allow_unicode=True, sort_keys=False)
             
