@@ -1,5 +1,27 @@
 proxies:
-- name: 01_VLESS_13
+- name: 01_VLESS_44
+  type: vless
+  server: 157.254.223.44
+  port: 18959
+  uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
+  tls: true
+  skip-cert-verify: true
+  reality-opts:
+    public-key: -hwVEdgFkvjku8ESuDoAA7id5yGGv_zXBvBW_RdhmHA
+    short-id: d557c6895d014075
+  servername: itunes.apple.com
+- name: 02_VLESS_232
+  type: vless
+  server: 89.144.35.232
+  port: 15531
+  uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
+  tls: true
+  skip-cert-verify: true
+  reality-opts:
+    public-key: o4gXQf1n5YOoLo6OnyHykodK1ZShHvDqu1FgxNHe6n8
+    short-id: 8346964417a2552b
+  servername: itunes.apple.com
+- name: 03_VLESS_13
   type: vless
   server: 195.154.200.13
   port: 17401
@@ -9,8 +31,7 @@ proxies:
   reality-opts:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
-  servername: itunes.apple.com
-- name: 02_VLESS_2001:bc8:32d7:181::2
+- name: 04_VLESS_node
   type: vless
   server: 2001:bc8:32d7:181::2
   port: 17401
@@ -20,8 +41,7 @@ proxies:
   reality-opts:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
-  servername: itunes.apple.com
-- name: 03_VLESS_2001:bc8:32d7:181::3
+- name: 05_VLESS_node
   type: vless
   server: 2001:bc8:32d7:181::3
   port: 17401
@@ -31,15 +51,26 @@ proxies:
   reality-opts:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
-  servername: itunes.apple.com
 proxy-groups:
 - name: 🚀 节点选择
   type: select
   proxies:
   - ⚡ 自动选择
-  - 01_VLESS_13
-  - 02_VLESS_2001:bc8:32d7:181::2
-  - 03_VLESS_2001:bc8:32d7:181::3
+  - 01_VLESS_44
+  - 02_VLESS_232
+  - 03_VLESS_13
+  - 04_VLESS_node
+  - 05_VLESS_node
   - DIRECT
+- name: ⚡ 自动选择
+  type: url-test
+  proxies:
+  - 01_VLESS_44
+  - 02_VLESS_232
+  - 03_VLESS_13
+  - 04_VLESS_node
+  - 05_VLESS_node
+  url: http://www.gstatic.com/generate_204
+  interval: 300
 rules:
 - MATCH,🚀 节点选择
