@@ -6,10 +6,10 @@ proxies:
   uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
   tls: true
   skip-cert-verify: true
-  servername: itunes.apple.com
   reality-opts:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
+  servername: itunes.apple.com
 - name: 02_VLESS_2001:bc8:32d7:181::2
   type: vless
   server: 2001:bc8:32d7:181::2
@@ -17,10 +17,10 @@ proxies:
   uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
   tls: true
   skip-cert-verify: true
-  servername: itunes.apple.com
   reality-opts:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
+  servername: itunes.apple.com
 - name: 03_VLESS_2001:bc8:32d7:181::3
   type: vless
   server: 2001:bc8:32d7:181::3
@@ -28,10 +28,10 @@ proxies:
   uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
   tls: true
   skip-cert-verify: true
-  servername: itunes.apple.com
   reality-opts:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
+  servername: itunes.apple.com
 proxy-groups:
 - name: 🚀 节点选择
   type: select
