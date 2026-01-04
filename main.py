@@ -9,7 +9,7 @@ ctx = ssl._create_unverified_context()
 
 def parse_node(d):
     try:
-        # --- 1. NaiveProxy (保持原始逻辑， node.txt 可用) ---
+        # --- 1. NaiveProxy ---
         if 'proxy' in d and str(d['proxy']).startswith('https://'):
             p_str = d['proxy']
             m = re.search(r'@([^:]+):(\d+)', p_str)
@@ -17,43 +17,40 @@ def parse_node(d):
                 u_p = re.search(r'https://([^:]+):([^@]+)@', p_str).groups()
                 return {"t": "naive", "raw": p_str, "s": m.group(1), "p": int(m.group(2)), "auth": u_p}
 
-        # --- 2. Hysteria2 (适配 Clash 字段) ---
+        # --- 2. Hysteria2 (增强识别逻辑) ---
         ptype = str(d.get('type') or d.get('protocol') or '').lower()
-        if 'hysteria2' in ptype:
+        if 'hysteria2' in ptype or 'hy2' in ptype:
             s = d.get('server') or d.get('add')
             if not s: return None
             host = str(s).replace('[','').replace(']','')
-            u = d.get('auth') or d.get('password')
+            u = d.get('auth') or d.get('password') or d.get('auth_str')
             return {
                 "t": "hysteria2", "s": host, "p": int(d.get('port', 443)), "u": str(u), 
                 "sn": d.get('sni') or d.get('servername'), 
-                "insecure": 1 if (d.get('skip-cert-verify')) else 0
+                "insecure": 1 if (d.get('skip-cert-verify') or d.get('insecure')) else 0
             }
 
-        # --- 3. VLESS (核心：Reality 兼容性提取) ---
+        # --- 3. VLESS ---
         if 'vless' in ptype:
             s, p, u = d.get('server') or d.get('add'), d.get('port'), d.get('uuid') or d.get('id')
             if not (s and u): return None
             
-            # 基础透传参数
             p_list = {"encryption": d.get("encryption", "none"), "flow": d.get("flow")}
             sec, sn, pbk, sid, fp, net = 'none', None, None, None, None, d.get('network', 'tcp')
             
-            # 深度识别 Reality 选项
             ro = d.get('reality-opts', {})
             if ro:
                 sec = 'reality'
                 pbk = ro.get('public-key')
                 sid = ro.get('short-id')
             
-            # 识别 SNI 和 指纹
             sn = d.get('servername') or d.get('sni')
             fp = d.get('client-fingerprint') or d.get('fp')
             if d.get('tls') is True and sec == 'none': sec = 'tls'
 
             params = {
                 "security": sec, "sni": sn, "fp": fp, "pbk": pbk, "sid": sid, "type": net,
-                "flow": d.get("flow"), "encryption": d.get("encryption", "none")
+                "flow": d.get("flow")
             }
             return {"t":"vless","s":str(s),"p":int(p),"u":str(u),"params": {k: v for k, v in params.items() if v}}
     except: return None
@@ -74,7 +71,7 @@ def main():
         urls = re.findall(r'https?://[^\s\'"\[\],]+', content)
     
     nodes = []
-    # 尝试直接解析 manual_json.txt 里的文本内容
+    # 优先解析 manual_json.txt 全文
     try:
         data = yaml.safe_load(content)
         for d in find_dicts(data):
@@ -82,7 +79,6 @@ def main():
             if n: nodes.append(n)
     except: pass
 
-    # 解析文件中包含的 URL 订阅地址
     for url in urls:
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -102,9 +98,9 @@ def main():
 
     clash_proxies, v2_links = [], []
     for i, n in enumerate(unique_nodes):
-        # 优化 IPv6 和 IPv4 节点命名
-        host_tag = n['s'].split(':')[-1] if ':' in n['s'] else n['s'].split('.')[-1]
-        nm = f"{i+1:02d}_{n['t'].upper()}_{host_tag}"
+        # 优化节点命名
+        host_display = n['s'].split('.')[-1] if '.' in n['s'] else 'v6'
+        nm = f"{i+1:02d}_{n['t'].upper()}_{host_display}"
         
         if n['t'] == 'vless':
             p = n['params']
@@ -114,20 +110,15 @@ def main():
             if p.get("flow"): px["flow"] = p["flow"]
             if p.get("security") == "reality": px["reality-opts"] = {"public-key": p.get("pbk"), "short-id": p.get("sid", "")}
             clash_proxies.append(px)
-            # V2Ray 格式链接
             query = "&".join([f"{k}={v}" for k, v in p.items() if v])
             v2_links.append(f"vless://{n['u']}@{n['s']}:{n['p']}?{query}#{nm}")
-            
         elif n['t'] == 'hysteria2':
             clash_proxies.append({"name": nm, "type": "hysteria2", "server": n['s'], "port": n['p'], "password": n['u'], "sni": n.get('sn'), "skip-cert-verify": True})
-            v2_links.append(f"hysteria2://{n['u']}@{n['s']}:{n['p']}?sni={n.get('sn','') or ''}&insecure=1#{nm}")
-            
+            v2_links.append(f"hysteria2://{n['u']}@{n['s']}:{n['p']}?sni={n.get('sn','')}&insecure=1#{nm}")
         elif n['t'] == 'naive':
-            # 仅保留在链接文件，不进入 Clash 配置
             v2_links.append(f"{n['raw']}#{nm}")
 
     if not v2_links: return
-    
     if clash_proxies:
         conf = {
             "proxies": clash_proxies,
