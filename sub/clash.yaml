@@ -1,36 +1,33 @@
 proxies:
-- name: 03_VLESS_13
+- name: 01_VLESS_13
   type: vless
   server: 195.154.200.13
   port: 17401
   uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
   tls: true
   skip-cert-verify: true
-  network: tcp
   servername: itunes.apple.com
   reality-opts:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
-- name: 04_VLESS_v6
+- name: 02_VLESS_2001:bc8:32d7:181::2
   type: vless
   server: 2001:bc8:32d7:181::2
   port: 17401
   uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
   tls: true
   skip-cert-verify: true
-  network: tcp
   servername: itunes.apple.com
   reality-opts:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
-- name: 05_VLESS_v6
+- name: 03_VLESS_2001:bc8:32d7:181::3
   type: vless
   server: 2001:bc8:32d7:181::3
   port: 17401
   uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
   tls: true
   skip-cert-verify: true
-  network: tcp
   servername: itunes.apple.com
   reality-opts:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
@@ -40,17 +37,9 @@ proxy-groups:
   type: select
   proxies:
   - ⚡ 自动选择
-  - 03_VLESS_13
-  - 04_VLESS_v6
-  - 05_VLESS_v6
+  - 01_VLESS_13
+  - 02_VLESS_2001:bc8:32d7:181::2
+  - 03_VLESS_2001:bc8:32d7:181::3
   - DIRECT
-- name: ⚡ 自动选择
-  type: url-test
-  proxies:
-  - 03_VLESS_13
-  - 04_VLESS_v6
-  - 05_VLESS_v6
-  url: http://www.gstatic.com/generate_204
-  interval: 300
 rules:
 - MATCH,🚀 节点选择
