@@ -43,7 +43,6 @@ proxies:
   server: 157.254.223.44
   port: 18959
   uuid: d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa
-  udp: true
   tls: true
   skip-cert-verify: true
   network: tcp
@@ -57,7 +56,6 @@ proxies:
   server: 89.144.35.232
   port: 15531
   uuid: d3fd3b3c-f8d4-4894-b91e-5a6a53923a95
-  udp: true
   tls: true
   skip-cert-verify: true
   network: tcp
