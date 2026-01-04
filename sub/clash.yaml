@@ -8,7 +8,6 @@ proxies:
   skip-cert-verify: true
   network: tcp
   servername: itunes.apple.com
-  client-fingerprint: chrome
   reality-opts:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
@@ -21,7 +20,6 @@ proxies:
   skip-cert-verify: true
   network: tcp
   servername: itunes.apple.com
-  client-fingerprint: chrome
   reality-opts:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
@@ -34,7 +32,6 @@ proxies:
   skip-cert-verify: true
   network: tcp
   servername: itunes.apple.com
-  client-fingerprint: chrome
   reality-opts:
     public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
     short-id: 8ef4455ba637425b
@@ -47,13 +44,5 @@ proxy-groups:
   - 04_VLESS_v6
   - 05_VLESS_v6
   - DIRECT
-- name: ⚡ 自动选择
-  type: url-test
-  proxies:
-  - 03_VLESS_13
-  - 04_VLESS_v6
-  - 05_VLESS_v6
-  url: http://www.gstatic.com/generate_204
-  interval: 300
 rules:
 - MATCH,🚀 节点选择
