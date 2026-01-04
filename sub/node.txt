@@ -5,3 +5,6 @@ https://dongtaiwang.com:dongtaiwang.com@us.193919.xyz:44000#04_NAIVE_xyz
 https://dongtaiwang.com:dongtaiwang.com@naive1.336892.xyz:22338#05_NAIVE_xyz
 vless://d0b3e27d-bbfc-4a3b-8e60-6973de8fcefa@157.254.223.44:18959?encryption=none&packetEncoding=xudp&security=reality&type=tcp&sni=itunes.apple.com&fp=chrome&pbk=-hwVEdgFkvjku8ESuDoAA7id5yGGv_zXBvBW_RdhmHA&sid=d557c6895d014075#06_VLESS_44
 vless://d3fd3b3c-f8d4-4894-b91e-5a6a53923a95@89.144.35.232:15531?encryption=none&packetEncoding=xudp&security=reality&type=tcp&sni=itunes.apple.com&fp=chrome&pbk=o4gXQf1n5YOoLo6OnyHykodK1ZShHvDqu1FgxNHe6n8&sid=8346964417a2552b#07_VLESS_232
+vless://add14a5b-f648-4423-8a1f-8b8f54c0daef@195.154.200.13:17401?encryption=none&security=reality&type=tcp&sni=itunes.apple.com&fp=chrome&pbk=IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU&sid=8ef4455ba637425b#08_VLESS_13
+vless://add14a5b-f648-4423-8a1f-8b8f54c0daef@2001:bc8:32d7:181::2:17401?encryption=none&security=reality&type=tcp&sni=itunes.apple.com&fp=chrome&pbk=IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU&sid=8ef4455ba637425b#09_VLESS_2001:bc8:32d7:181::2
+vless://add14a5b-f648-4423-8a1f-8b8f54c0daef@2001:bc8:32d7:181::3:17401?encryption=none&security=reality&type=tcp&sni=itunes.apple.com&fp=chrome&pbk=IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU&sid=8ef4455ba637425b#10_VLESS_2001:bc8:32d7:181::3

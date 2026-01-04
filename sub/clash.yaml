@@ -20,24 +20,6 @@ proxies:
   password: dongtaiwang.com
   sni: www.microsoft.com
   skip-cert-verify: true
-- name: 04_NAIVE_xyz
-  type: http
-  server: us.193919.xyz
-  port: 44000
-  username: dongtaiwang.com
-  password: dongtaiwang.com
-  tls: true
-  sni: us.193919.xyz
-  skip-cert-verify: true
-- name: 05_NAIVE_xyz
-  type: http
-  server: naive1.336892.xyz
-  port: 22338
-  username: dongtaiwang.com
-  password: dongtaiwang.com
-  tls: true
-  sni: naive1.336892.xyz
-  skip-cert-verify: true
 - name: 06_VLESS_44
   type: vless
   server: 157.254.223.44
@@ -64,6 +46,45 @@ proxies:
   reality-opts:
     public-key: o4gXQf1n5YOoLo6OnyHykodK1ZShHvDqu1FgxNHe6n8
     short-id: 8346964417a2552b
+- name: 08_VLESS_13
+  type: vless
+  server: 195.154.200.13
+  port: 17401
+  uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
+  tls: true
+  skip-cert-verify: true
+  network: tcp
+  servername: itunes.apple.com
+  client-fingerprint: chrome
+  reality-opts:
+    public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
+    short-id: 8ef4455ba637425b
+- name: 09_VLESS_2001:bc8:32d7:181::2
+  type: vless
+  server: 2001:bc8:32d7:181::2
+  port: 17401
+  uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
+  tls: true
+  skip-cert-verify: true
+  network: tcp
+  servername: itunes.apple.com
+  client-fingerprint: chrome
+  reality-opts:
+    public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
+    short-id: 8ef4455ba637425b
+- name: 10_VLESS_2001:bc8:32d7:181::3
+  type: vless
+  server: 2001:bc8:32d7:181::3
+  port: 17401
+  uuid: add14a5b-f648-4423-8a1f-8b8f54c0daef
+  tls: true
+  skip-cert-verify: true
+  network: tcp
+  servername: itunes.apple.com
+  client-fingerprint: chrome
+  reality-opts:
+    public-key: IXcXrT_Y0ATTZlGOhPnSmKo-cuGr4yMKV9Rz4-nA3yU
+    short-id: 8ef4455ba637425b
 proxy-groups:
 - name: 🚀 节点选择
   type: select
@@ -72,10 +93,11 @@ proxy-groups:
   - 01_HYSTERIA2_43
   - 02_HYSTERIA2_146
   - 03_HYSTERIA2_63
-  - 04_NAIVE_xyz
-  - 05_NAIVE_xyz
   - 06_VLESS_44
   - 07_VLESS_232
+  - 08_VLESS_13
+  - 09_VLESS_2001:bc8:32d7:181::2
+  - 10_VLESS_2001:bc8:32d7:181::3
   - DIRECT
 - name: ⚡ 自动选择
   type: url-test
@@ -83,10 +105,11 @@ proxy-groups:
   - 01_HYSTERIA2_43
   - 02_HYSTERIA2_146
   - 03_HYSTERIA2_63
-  - 04_NAIVE_xyz
-  - 05_NAIVE_xyz
   - 06_VLESS_44
   - 07_VLESS_232
+  - 08_VLESS_13
+  - 09_VLESS_2001:bc8:32d7:181::2
+  - 10_VLESS_2001:bc8:32d7:181::3
   url: http://www.gstatic.com/generate_204
   interval: 300
 rules:
