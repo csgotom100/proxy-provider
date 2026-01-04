@@ -9,7 +9,7 @@ ctx = ssl._create_unverified_context()
 
 def parse_node(d):
     try:
-        # --- 1. NaiveProxy (严格保持原始 https 字符串) ---
+        # --- 1. NaiveProxy (保持原始逻辑， node.txt 可用) ---
         if 'proxy' in d and str(d['proxy']).startswith('https://'):
             p_str = d['proxy']
             m = re.search(r'@([^:]+):(\d+)', p_str)
@@ -17,56 +17,48 @@ def parse_node(d):
                 u_p = re.search(r'https://([^:]+):([^@]+)@', p_str).groups()
                 return {"t": "naive", "raw": p_str, "s": m.group(1), "p": int(m.group(2)), "auth": u_p}
 
-        # --- 2. Hysteria2 (适配 JSON 和 Clash YAML) ---
+        # --- 2. Hysteria2 (适配 Clash 字段) ---
         ptype = str(d.get('type') or d.get('protocol') or '').lower()
-        if 'hysteria2' in ptype or 'quic' in d:
+        if 'hysteria2' in ptype:
             s = d.get('server') or d.get('add')
             if not s: return None
-            s_part = str(s).split(',')[0]
-            host, port = s_part.split(':')[0].replace('[','').replace(']',''), s_part.split(':')[1] if ':' in s_part else d.get('port', 443)
-            u = d.get('auth') or d.get('password') or d.get('auth_str')
-            tls = d.get('tls', {})
+            host = str(s).replace('[','').replace(']','')
+            u = d.get('auth') or d.get('password')
             return {
-                "t": "hysteria2", "s": host, "p": int(port), "u": str(u), 
-                "sn": tls.get('sni') or d.get('sni') or d.get('servername'), 
-                "insecure": 1 if (tls.get('insecure') or d.get('skip-cert-verify')) else 0
+                "t": "hysteria2", "s": host, "p": int(d.get('port', 443)), "u": str(u), 
+                "sn": d.get('sni') or d.get('servername'), 
+                "insecure": 1 if (d.get('skip-cert-verify')) else 0
             }
 
-        # --- 3. VLESS (核心：参数像素级透传) ---
+        # --- 3. VLESS (核心：Reality 兼容性提取) ---
         if 'vless' in ptype:
-            s, p, u = d.get('server') or d.get('add'), d.get('port') or d.get('server_port'), d.get('uuid') or d.get('id')
+            s, p, u = d.get('server') or d.get('add'), d.get('port'), d.get('uuid') or d.get('id')
             if not (s and u): return None
             
-            # 基础透传
-            p_list = {"encryption": d.get("encryption", "none"), "flow": d.get("flow"), "packetEncoding": d.get("packet_encoding") or d.get("packet-addr")}
+            # 基础透传参数
+            p_list = {"encryption": d.get("encryption", "none"), "flow": d.get("flow")}
             sec, sn, pbk, sid, fp, net = 'none', None, None, None, None, d.get('network', 'tcp')
             
-            # 处理 sing-box 嵌套
-            tls = d.get('tls', {})
-            if isinstance(tls, dict) and tls.get('enabled'):
-                sec = 'reality' if tls.get('reality', {}).get('enabled') else 'tls'
-                sn, fp = tls.get('server_name'), tls.get('utls', {}).get('fingerprint')
-                ry = tls.get('reality', {})
-                if ry: pbk, sid = ry.get('public_key'), ry.get('short_id')
+            # 深度识别 Reality 选项
+            ro = d.get('reality-opts', {})
+            if ro:
+                sec = 'reality'
+                pbk = ro.get('public-key')
+                sid = ro.get('short-id')
             
-            # 处理 Clash/Xray 扁平结构
-            if d.get('tls') is True or d.get('security'):
-                sec = d.get('security') or 'tls'
-                sn = d.get('servername') or d.get('sni')
-                fp = d.get('client-fingerprint') or d.get('fp')
-                if sec == 'reality' or 'reality-opts' in d:
-                    sec = 'reality'
-                    ro = d.get('reality-opts', {})
-                    pbk = ro.get('public-key') or d.get('pbk')
-                    sid = ro.get('short-id') or d.get('sid')
+            # 识别 SNI 和 指纹
+            sn = d.get('servername') or d.get('sni')
+            fp = d.get('client-fingerprint') or d.get('fp')
+            if d.get('tls') is True and sec == 'none': sec = 'tls'
 
-            final_p = {k: v for k, v in p_list.items() if v}
-            final_p.update({"security": sec, "type": net, "sni": sn, "fp": fp, "pbk": pbk, "sid": sid})
-            return {"t":"vless","s":str(s),"p":int(p),"u":str(u),"params": {k: v for k, v in final_p.items() if v}}
+            params = {
+                "security": sec, "sni": sn, "fp": fp, "pbk": pbk, "sid": sid, "type": net,
+                "flow": d.get("flow"), "encryption": d.get("encryption", "none")
+            }
+            return {"t":"vless","s":str(s),"p":int(p),"u":str(u),"params": {k: v for k, v in params.items() if v}}
     except: return None
 
 def find_dicts(obj):
-    """递归查找所有包含节点信息的字典，支持 Clash proxies 列表"""
     if isinstance(obj, dict):
         yield obj
         if 'proxies' in obj and isinstance(obj['proxies'], list):
@@ -82,6 +74,15 @@ def main():
         urls = re.findall(r'https?://[^\s\'"\[\],]+', content)
     
     nodes = []
+    # 尝试直接解析 manual_json.txt 里的文本内容
+    try:
+        data = yaml.safe_load(content)
+        for d in find_dicts(data):
+            n = parse_node(d)
+            if n: nodes.append(n)
+    except: pass
+
+    # 解析文件中包含的 URL 订阅地址
     for url in urls:
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -101,7 +102,10 @@ def main():
 
     clash_proxies, v2_links = [], []
     for i, n in enumerate(unique_nodes):
-        nm = f"{i+1:02d}_{n['t'].upper()}_{str(n['s']).split('.')[-1]}"
+        # 优化 IPv6 和 IPv4 节点命名
+        host_tag = n['s'].split(':')[-1] if ':' in n['s'] else n['s'].split('.')[-1]
+        nm = f"{i+1:02d}_{n['t'].upper()}_{host_tag}"
+        
         if n['t'] == 'vless':
             p = n['params']
             px = {"name": nm, "type": "vless", "server": n['s'], "port": n['p'], "uuid": n['u'], "tls": True, "skip-cert-verify": True, "network": p.get("type", "tcp")}
@@ -110,22 +114,32 @@ def main():
             if p.get("flow"): px["flow"] = p["flow"]
             if p.get("security") == "reality": px["reality-opts"] = {"public-key": p.get("pbk"), "short-id": p.get("sid", "")}
             clash_proxies.append(px)
-            query = "&".join([f"{k}={v}" for k, v in p.items()])
+            # V2Ray 格式链接
+            query = "&".join([f"{k}={v}" for k, v in p.items() if v])
             v2_links.append(f"vless://{n['u']}@{n['s']}:{n['p']}?{query}#{nm}")
+            
         elif n['t'] == 'hysteria2':
             clash_proxies.append({"name": nm, "type": "hysteria2", "server": n['s'], "port": n['p'], "password": n['u'], "sni": n.get('sn'), "skip-cert-verify": True})
-            v2_links.append(f"hysteria2://{n['u']}@{n['s']}:{n['p']}?sni={n.get('sn','')}&insecure={n['insecure']}&allowInsecure={n['insecure']}#{nm}")
+            v2_links.append(f"hysteria2://{n['u']}@{n['s']}:{n['p']}?sni={n.get('sn','') or ''}&insecure=1#{nm}")
+            
         elif n['t'] == 'naive':
-            # Clash 不添加 Naive 节点，仅保留在 node.txt
+            # 仅保留在链接文件，不进入 Clash 配置
             v2_links.append(f"{n['raw']}#{nm}")
-            pass 
 
     if not v2_links: return
-    # 写入 Clash
+    
     if clash_proxies:
+        conf = {
+            "proxies": clash_proxies,
+            "proxy-groups": [
+                {"name": "🚀 节点选择", "type": "select", "proxies": ["⚡ 自动选择"] + [px['name'] for px in clash_proxies] + ["DIRECT"]},
+                {"name": "⚡ 自动选择", "type": "url-test", "proxies": [px['name'] for px in clash_proxies], "url": "http://www.gstatic.com/generate_204", "interval": 300}
+            ],
+            "rules": ["MATCH,🚀 节点选择"]
+        }
         with open(os.path.join(OUT_DIR, "clash.yaml"), 'w', encoding='utf-8') as f:
-            yaml.dump({"proxies": clash_proxies, "proxy-groups": [{"name": "🚀 节点选择", "type": "select", "proxies": ["⚡ 自动选择"] + [p['name'] for p in clash_proxies] + ["DIRECT"]}, {"name": "⚡ 自动选择", "type": "url-test", "proxies": [p['name'] for p in clash_proxies], "url": "http://www.gstatic.com/generate_204", "interval": 300}], "rules": ["MATCH,🚀 节点选择"]}, f, allow_unicode=True, sort_keys=False)
-    # 写入链接文件
+            yaml.dump(conf, f, allow_unicode=True, sort_keys=False)
+            
     with open(os.path.join(OUT_DIR, "node.txt"), 'w', encoding='utf-8') as f: f.write("\n".join(v2_links))
     with open(os.path.join(OUT_DIR, "sub.txt"), 'w', encoding='utf-8') as f: f.write(base64.b64encode("\n".join(v2_links).encode()).decode())
 
