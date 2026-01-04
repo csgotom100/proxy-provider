@@ -9,7 +9,7 @@ ctx = ssl._create_unverified_context()
 
 def parse_node(d):
     try:
-        # --- 1. NaiveProxy (严格保持原始 https 字符串) ---
+        # --- 1. NaiveProxy (逻辑保留) ---
         if 'proxy' in d and str(d['proxy']).startswith('https://'):
             p_str = d['proxy']
             m = re.search(r'@([^:]+):(\d+)', p_str)
@@ -87,6 +87,8 @@ def main():
     clash_proxies, v2_links = [], []
     for i, n in enumerate(unique_nodes):
         nm = f"{i+1:02d}_{n['t'].upper()}_{str(n['s']).split('.')[-1]}"
+        
+        # --- VLESS 处理 ---
         if n['t'] == 'vless':
             p = n['params']
             px = {"name": nm, "type": "vless", "server": n['s'], "port": n['p'], "uuid": n['u'], "tls": True, "skip-cert-verify": True, "network": p.get("type", "tcp")}
@@ -97,18 +99,12 @@ def main():
             clash_proxies.append(px)
             query = "&".join([f"{k}={v}" for k, v in p.items()])
             v2_links.append(f"vless://{n['u']}@{n['s']}:{n['p']}?{query}#{nm}")
+            
+        # --- Hysteria2 处理 ---
         elif n['t'] == 'hysteria2':
             clash_proxies.append({"name": nm, "type": "hysteria2", "server": n['s'], "port": n['p'], "password": n['u'], "sni": n.get('sn'), "skip-cert-verify": True})
             v2_links.append(f"hysteria2://{n['u']}@{n['s']}:{n['p']}?sni={n.get('sn','')}&insecure={n['insecure']}&allowInsecure={n['insecure']}#{nm}")
+            
+        # --- Naive 处理 (Clash 部分已注释/跳过) ---
         elif n['t'] == 'naive':
-            clash_proxies.append({"name": nm, "type": "http", "server": n['s'], "port": n['p'], "username": n['auth'][0], "password": n['auth'][1], "tls": True, "sni": n['s'], "skip-cert-verify": True})
-            v2_links.append(f"{n['raw']}#{nm}")
-
-    if not clash_proxies: return
-    with open(os.path.join(OUT_DIR, "clash.yaml"), 'w', encoding='utf-8') as f:
-        yaml.dump({"proxies": clash_proxies, "proxy-groups": [{"name": "🚀 节点选择", "type": "select", "proxies": ["⚡ 自动选择"] + [p['name'] for p in clash_proxies] + ["DIRECT"]}, {"name": "⚡ 自动选择", "type": "url-test", "proxies": [p['name'] for p in clash_proxies], "url": "http://www.gstatic.com/generate_204", "interval": 300}], "rules": ["MATCH,🚀 节点选择"]}, f, allow_unicode=True, sort_keys=False)
-    with open(os.path.join(OUT_DIR, "node.txt"), 'w', encoding='utf-8') as f: f.write("\n".join(v2_links))
-    with open(os.path.join(OUT_DIR, "sub.txt"), 'w', encoding='utf-8') as f: f.write(base64.b64encode("\n".join(v2_links).encode()).decode())
-
-if __name__ == "__main__":
-    main()
+            # clash_proxies.append({"name": nm, "type": "http", "server": n['s'], "port": n['p'], "username": n['auth'][0], "password": n['auth'][1], "tls": True
